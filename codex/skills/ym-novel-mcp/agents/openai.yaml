@@ -1,0 +1,7 @@
+interface:
+  display_name: "YM Novel MCP"
+  short_description: "Manage long-form novel projects through the local ym-novel-mcp server."
+  default_prompt: "Use $ym-novel-mcp to manage a long-form novel project through the local ym-novel-mcp server."
+
+policy:
+  allow_implicit_invocation: true

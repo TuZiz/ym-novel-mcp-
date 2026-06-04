@@ -1,0 +1,8 @@
+[mcp_servers.ym-novel-mcp]
+type = "stdio"
+command = "cmd"
+args = ["/d", "/c", "REPLACE_WITH_REPO_PATH/bin/ym-novel-mcp-stdio.cmd"]
+startup_timeout_sec = 120
+
+[mcp_servers.ym-novel-mcp.env]
+YM_NOVEL_MCP_DB_PATH = "REPLACE_WITH_REPO_PATH/data/novel.db"

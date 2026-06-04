@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "ym-novel-mcp": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/d",
+        "/c",
+        "${CLAUDE_PROJECT_DIR:-.}\\bin\\ym-novel-mcp-stdio.cmd"
+      ],
+      "env": {
+        "YM_NOVEL_MCP_DB_PATH": "${CLAUDE_PROJECT_DIR:-.}\\data\\novel.db"
+      }
+    }
+  }
+}
