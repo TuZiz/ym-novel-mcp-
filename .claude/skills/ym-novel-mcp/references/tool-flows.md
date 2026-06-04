@@ -39,15 +39,16 @@ Use prompts when the user wants a model-facing instruction package instead of a 
 2. `get_recent_chapters`
 3. `list_open_foreshadowings`
 4. `get_timeline`
-5. `build_next_chapter_context`
+5. `plan_next_chapter` or `build_next_chapter_context`
 
 ### Save a finished chapter
 
 1. `save_chapter`
-2. `update_character_state`
-3. `add_timeline_event`
-4. `add_foreshadowing` or `resolve_foreshadowing`
-5. `update_chapter_summary`
+2. `build_post_chapter_update_prompt`
+3. `update_character_state`
+4. `add_timeline_event`
+5. `add_foreshadowing` or `resolve_foreshadowing`
+6. `update_chapter_summary`
 
 ### Review a new draft
 
@@ -56,3 +57,9 @@ Use prompts when the user wants a model-facing instruction package instead of a 
 3. `search_world_items`
 4. `check_continuity`
 5. `continuity-review`
+
+### Backup or import
+
+1. `export_project`
+2. `import_project` with default `new_project` mode for safe copies
+3. `import_project` with `overwrite` only after explicit confirmation

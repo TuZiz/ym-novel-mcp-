@@ -57,4 +57,29 @@ export function registerProjectTools(server: McpServer, services: AppServices): 
       services.projectService.updateProject(projectId, patch)
     )
   );
+
+  server.registerTool(
+    "export_project",
+    {
+      description: "导出整个小说项目为结构化 JSON。",
+      inputSchema: {
+        projectId: z.string().min(1)
+      }
+    },
+    wrapToolHandler(({ projectId }) =>
+      services.projectTransferService.exportProject(projectId)
+    )
+  );
+
+  server.registerTool(
+    "import_project",
+    {
+      description: "从结构化 JSON 导入小说项目。",
+      inputSchema: {
+        data: z.record(z.string(), z.unknown()),
+        mode: z.enum(["new_project", "overwrite"]).optional()
+      }
+    },
+    wrapToolHandler((args) => services.projectTransferService.importProject(args))
+  );
 }

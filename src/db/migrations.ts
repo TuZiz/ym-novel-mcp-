@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { nowIso } from "../utils/text.js";
+import { repairFtsIndexes } from "./fts.js";
 import { schemaStatements } from "./schema.js";
 
 const migrations = [
@@ -42,4 +43,10 @@ export function runMigrations(db: Database.Database): void {
       applyMigration(migration.version, migration.name, migration.statements);
     }
   }
+
+  for (const statement of schemaStatements) {
+    db.exec(statement);
+  }
+
+  repairFtsIndexes(db);
 }

@@ -1,9 +1,11 @@
 import type { ChapterService } from "../services/chapterService.js";
+import type { ChapterPipelineService } from "../services/chapterPipelineService.js";
 import type { CharacterService } from "../services/characterService.js";
 import type { ContinuityService } from "../services/continuityService.js";
 import type { ForeshadowingService } from "../services/foreshadowingService.js";
 import type { OutlineService } from "../services/outlineService.js";
 import type { ProjectService } from "../services/projectService.js";
+import type { ProjectTransferService } from "../services/projectTransferService.js";
 import type { SearchService } from "../services/searchService.js";
 import type { TimelineService } from "../services/timelineService.js";
 import type { WorldService } from "../services/worldService.js";
@@ -11,6 +13,7 @@ import type { WritingContextService } from "../services/writingContextService.js
 
 export interface AppServices {
   projectService: ProjectService;
+  projectTransferService: ProjectTransferService;
   worldService: WorldService;
   characterService: CharacterService;
   outlineService: OutlineService;
@@ -20,4 +23,5 @@ export interface AppServices {
   searchService: SearchService;
   continuityService: ContinuityService;
   writingContextService: WritingContextService;
+  chapterPipelineService: ChapterPipelineService;
 }

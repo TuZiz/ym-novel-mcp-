@@ -1,3 +1,4 @@
+import * as z from "zod/v4";
 import { AppError } from "../utils/errors.js";
 
 export function jsonToolResult(data: unknown) {
@@ -52,6 +53,13 @@ function normalizeError(error: unknown) {
     return {
       code: error.code,
       message: error.message
+    };
+  }
+
+  if (error instanceof z.ZodError) {
+    return {
+      code: "VALIDATION_ERROR",
+      message: z.prettifyError(error)
     };
   }
 

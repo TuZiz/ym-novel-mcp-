@@ -21,4 +21,32 @@ export function registerWritingContextTools(
     },
     wrapToolHandler((args) => services.writingContextService.buildNextChapterContext(args))
   );
+
+  server.registerTool(
+    "plan_next_chapter",
+    {
+      description: "根据现有资料生成下一章大纲建议和写作指令。",
+      inputSchema: {
+        projectId: z.string().min(1),
+        chapterIndex: z.number().int().positive(),
+        volumeId: z.string().optional(),
+        focus: z.string().optional()
+      }
+    },
+    wrapToolHandler((args) => services.chapterPipelineService.planNextChapter(args))
+  );
+
+  server.registerTool(
+    "build_post_chapter_update_prompt",
+    {
+      description: "生成章节写完后的资料整理提示词和 JSON Schema。",
+      inputSchema: {
+        projectId: z.string().min(1),
+        chapterIndex: z.number().int().positive()
+      }
+    },
+    wrapToolHandler((args) =>
+      services.chapterPipelineService.buildPostChapterUpdatePrompt(args)
+    )
+  );
 }

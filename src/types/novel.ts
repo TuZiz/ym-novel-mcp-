@@ -164,6 +164,70 @@ export interface NextChapterContext {
   instruction: string;
 }
 
+export interface ExportedProjectData {
+  project: Project;
+  worldItems: WorldItem[];
+  characters: Character[];
+  relationships: CharacterRelationship[];
+  volumes: Volume[];
+  chapterOutlines: ChapterOutline[];
+  chapters: Chapter[];
+  foreshadowings: Foreshadowing[];
+  timelineEvents: TimelineEvent[];
+  canonFacts: CanonFact[];
+  writingRules: WritingRule[];
+}
+
+export interface ImportProjectInput {
+  data: unknown;
+  mode?: "new_project" | "overwrite";
+}
+
+export interface ImportProjectResult {
+  mode: "new_project" | "overwrite";
+  project: Project;
+  counts: {
+    worldItems: number;
+    characters: number;
+    relationships: number;
+    volumes: number;
+    chapterOutlines: number;
+    chapters: number;
+    foreshadowings: number;
+    timelineEvents: number;
+    canonFacts: number;
+    writingRules: number;
+  };
+}
+
+export interface OutlineSuggestion {
+  title: string;
+  goal: string;
+  conflict: string;
+  keyEvents: string[];
+  requiredCharacters: string[];
+  requiredForeshadowing: string[];
+  endingHook: string;
+}
+
+export interface PlanNextChapterInput {
+  projectId: string;
+  chapterIndex: number;
+  volumeId?: string;
+  focus?: string;
+}
+
+export interface PlanNextChapterResult {
+  outlineSuggestion: OutlineSuggestion;
+  context: NextChapterContext;
+  instruction: string;
+}
+
+export interface BuildPostChapterUpdatePromptInput {
+  projectId: string;
+  chapterIndex: number;
+}
+
 export interface CreateProjectInput {
   name: string;
   genre?: string;

@@ -39,15 +39,16 @@ Use prompts when the user needs a model-facing instruction package, not when the
 2. `get_recent_chapters`
 3. `list_open_foreshadowings`
 4. `get_timeline`
-5. `build_next_chapter_context`
+5. `plan_next_chapter` or `build_next_chapter_context`
 
 ### Save a Finished Chapter
 
 1. `save_chapter`
-2. `update_character_state` as needed
-3. `add_timeline_event`
-4. `add_foreshadowing` or `resolve_foreshadowing`
-5. `update_chapter_summary` if the stored summary needs a second pass
+2. `build_post_chapter_update_prompt` when an external AI should extract updates
+3. `update_character_state` as needed
+4. `add_timeline_event`
+5. `add_foreshadowing` or `resolve_foreshadowing`
+6. `update_chapter_summary` if the stored summary needs a second pass
 
 ### Review a New Draft
 
@@ -56,3 +57,9 @@ Use prompts when the user needs a model-facing instruction package, not when the
 3. `search_world_items`
 4. `check_continuity`
 5. `continuity-review` if the user wants an LLM review prompt
+
+### Backup or Import
+
+1. `export_project`
+2. `import_project` with default `new_project` mode for safe copies
+3. `import_project` with `overwrite` only after explicit confirmation

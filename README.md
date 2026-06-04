@@ -1,34 +1,34 @@
 # ym-novel-mcp
 
-`ym-novel-mcp` 是一个本地运行的 TypeScript MCP Server，专门服务于超长篇小说创作管理。它负责维护项目、人物、世界观、卷与章节大纲、正文、伏笔、时间线、连续性检查和下一章写作上下文，不直接调用外部模型 API。
+`ym-novel-mcp` 是一个本地运行的 TypeScript MCP Server，面向 500 万到 1000 万字单本长篇小说项目。它负责维护项目、人物、世界观、卷与章节大纲、正文、伏笔、时间线、连续性检查、导入导出和下一章写作上下文，不直接调用 OpenAI、Claude 或任何外部模型 API。
 
-## 为什么适合 500 万到 1000 万字长篇
+## 为什么适合超长篇
 
-- 数据持久化在 SQLite，本地可跑，长期维护成本低。
-- 章节、世界观、伏笔、时间线拆成独立表，便于持续检索和更新。
-- 提供 `build_next_chapter_context`，把最近剧情、关键角色、世界设定和未回收伏笔打包成稳定上下文。
-- 提供 `check_continuity`，先用规则和数据库做第一轮连续性拦截，减少人设崩坏和设定冲突。
-- 所有 MCP 工具都有 Zod 参数校验，输出统一为 JSON 结构。
+- SQLite 本地持久化，数据可控，长期维护成本低。
+- 章节、世界观、人物、伏笔、时间线和规则分表存储，方便持续检索和更新。
+- `build_next_chapter_context` 和 `plan_next_chapter` 可以稳定打包下一章上下文与候选大纲。
+- `check_continuity` 先用本地规则做连续性预检，减少人设、地点、设定和伏笔断裂。
+- `export_project` / `import_project` 支持整书结构化迁移，并在导入后重建 FTS 和重新计算字数。
 
 ## 技术栈
 
-- TypeScript
 - Node.js 22+
-- `@modelcontextprotocol/sdk` 1.29.0
+- TypeScript strict mode
+- `@modelcontextprotocol/sdk`
 - SQLite + FTS5
 - Zod v4
 - pnpm
 - Vitest
-- tsx
 - ESLint + Prettier
 
-## 安装
+## 安装与运行
 
 ```bash
 pnpm install
+pnpm build
+pnpm test
+pnpm lint
 ```
-
-## 运行
 
 开发模式：
 
@@ -36,81 +36,22 @@ pnpm install
 pnpm dev
 ```
 
-Windows 一键启动：
+构建后运行：
 
-```bat
-start-ym-novel-mcp.cmd
+```bash
+pnpm start
 ```
 
-Codex 静默 stdio 启动脚本：
+Windows 静默 stdio 启动脚本：
 
 ```bat
 bin\ym-novel-mcp-stdio.cmd
 ```
 
-安装 Codex + Claude Code 双版本 skill：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\bin\install-agent-skills.ps1
-```
-
-构建：
-
-```bash
-pnpm build
-```
-
-测试：
-
-```bash
-pnpm test
-```
-
-Lint：
-
-```bash
-pnpm lint
-```
-
-默认数据库位置由 `.env` 控制：
+默认数据库路径：
 
 ```env
 YM_NOVEL_MCP_DB_PATH=./data/novel.db
-```
-
-## MCP 客户端配置示例
-
-仓库内也提供了一份可复用模板：
-
-`codex/ym-novel-mcp.config.toml`
-
-注意：这个 Codex 模板里的 `REPLACE_WITH_REPO_PATH` 需要替换成你自己的仓库绝对路径。
-
-开发态直接用 `pnpm dev`：
-
-```json
-{
-  "mcpServers": {
-    "ym-novel-mcp": {
-      "command": "pnpm",
-      "args": ["dev"],
-      "cwd": "C:/Users/32633/Desktop/fanqianmcp"
-    }
-  }
-}
-```
-
-构建后用产物启动：
-
-```json
-{
-  "mcpServers": {
-    "ym-novel-mcp": {
-      "command": "node",
-      "args": ["C:/Users/32633/Desktop/fanqianmcp/dist/src/index.js"]
-    }
-  }
-}
 ```
 
 ## Tools
@@ -121,6 +62,8 @@ YM_NOVEL_MCP_DB_PATH=./data/novel.db
 - `get_project`
 - `list_projects`
 - `update_project`
+- `export_project`
+- `import_project`
 
 世界观：
 
@@ -168,10 +111,62 @@ YM_NOVEL_MCP_DB_PATH=./data/novel.db
 - `get_timeline`
 - `search_timeline`
 
-审校与写作：
+审校与写作流水线：
 
 - `check_continuity`
 - `build_next_chapter_context`
+- `plan_next_chapter`
+- `build_post_chapter_update_prompt`
+
+## 第二阶段新增 Tools
+
+`export_project`
+
+导出整个项目为结构化 JSON：
+
+```json
+{
+  "project": {},
+  "worldItems": [],
+  "characters": [],
+  "relationships": [],
+  "volumes": [],
+  "chapterOutlines": [],
+  "chapters": [],
+  "foreshadowings": [],
+  "timelineEvents": [],
+  "canonFacts": [],
+  "writingRules": []
+}
+```
+
+`import_project`
+
+从 `export_project` 的 JSON 导入项目。默认 `mode` 是 `new_project`，会生成全新的项目和实体 ID，不破坏已有项目。`overwrite` 只覆盖导入数据里 `project.id` 对应的项目。导入后会重建章节和世界观 FTS 索引，并重新计算 `current_words`。
+
+`plan_next_chapter`
+
+基于当前卷纲、最近章节、未回收伏笔、人物状态、世界观规则和写作规则生成下一章候选大纲：
+
+```json
+{
+  "outlineSuggestion": {
+    "title": "",
+    "goal": "",
+    "conflict": "",
+    "keyEvents": [],
+    "requiredCharacters": [],
+    "requiredForeshadowing": [],
+    "endingHook": ""
+  },
+  "context": {},
+  "instruction": ""
+}
+```
+
+`build_post_chapter_update_prompt`
+
+为指定章节生成中文整理提示词，内含 JSON Schema，供外部 AI 从章节正文中抽取章节摘要、人物状态变化、人物位置变化、新增伏笔、已回收伏笔、世界观事实、时间线事件和下一章钩子。
 
 ## Resources
 
@@ -191,31 +186,103 @@ YM_NOVEL_MCP_DB_PATH=./data/novel.db
 - `extract-canon`
 - `continuity-review`
 
-## Windows + Codex Skill
+## MCP 端到端测试
 
-- Windows 双击启动脚本：`start-ym-novel-mcp.cmd`
-- Codex MCP 静默启动脚本：`bin/ym-novel-mcp-stdio.cmd`
-- Codex MCP 配置模板：`codex/ym-novel-mcp.config.toml`
-- 本机已安装 skill：`C:/Users/32633/.codex/skills/ym-novel-mcp`
-- 仓库内可分发 Codex skill：`codex/skills/ym-novel-mcp`
+`tests/mcp-tools.test.ts` 使用 MCP SDK 的 `Client` + `InMemoryTransport` 连接真实 `McpServer`，通过 `client.callTool` 覆盖工具输入输出路径，而不是直接调用 service。覆盖流程包括：
 
-这个 skill 会在你显式提到 `$ym-novel-mcp`，或任务明显是在管理小说项目、角色、世界观、章节、伏笔、时间线、连续性检查、下一章上下文时触发。它会优先引导 Codex 使用本地 `ym-novel-mcp` 的 tools/resources/prompts，而不是在聊天里临时记笔记。
+- `create_project`
+- `add_world_item`
+- `add_character`
+- `create_volume`
+- `create_chapter_outline`
+- `save_chapter`
+- `add_foreshadowing`
+- `build_next_chapter_context`
+- `check_continuity`
+- `search_chapters`
+- `export_project`
+- `import_project`
+- `plan_next_chapter`
+- `build_post_chapter_update_prompt`
 
-## Claude Code 版本
+运行：
 
-- 项目级 MCP 配置：`.mcp.json`
-- 项目级 skill：`.claude/skills/ym-novel-mcp`
-- 可选个人安装脚本：`bin/install-agent-skills.ps1`
+```bash
+pnpm test
+```
 
-Claude Code 克隆仓库后，可以直接在项目内读取 `.mcp.json` 和 `.claude/skills/ym-novel-mcp`。`.mcp.json` 使用了官方推荐的 `${CLAUDE_PROJECT_DIR:-.}` 默认值写法，因此仓库路径变化后仍能定位到 `bin/ym-novel-mcp-stdio.cmd` 和 `data/novel.db`。如果你希望装成个人技能，也可以运行安装脚本，把 skill 同步到 `~/.claude/skills/ym-novel-mcp`。
+## GitHub Actions
 
-## 双版本 Skill 结构
+CI 配置位于 `.github/workflows/ci.yml`，在 push 到 `main` / `master` 或打开 PR 时运行：
 
-- Codex：`codex/skills/ym-novel-mcp`
-- Claude Code：`.claude/skills/ym-novel-mcp`
-- 统一安装脚本：`bin/install-agent-skills.ps1`
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+pnpm test
+pnpm lint
+```
 
-两边的 skill 都围绕同一套本地 MCP 工具流：先查项目，再拉最近章节/角色/世界观/伏笔/时间线，最后做连续性检查或构建下一章上下文。
+CI 使用 Node.js 22 和 pnpm 10。首次推送到 GitHub 后，可以在仓库 Actions 页面查看状态。
+
+## 推荐 Codex 配置
+
+仓库内提供模板：
+
+```text
+codex/ym-novel-mcp.config.toml
+```
+
+Windows 推荐使用 `cmd /d /c` 调用仓库脚本，并把数据库路径显式传入：
+
+```toml
+[mcp_servers.ym-novel-mcp]
+type = "stdio"
+command = "cmd"
+args = ["/d", "/c", "C:/Users/32633/Desktop/fanqianmcp/bin/ym-novel-mcp-stdio.cmd"]
+startup_timeout_sec = 120
+
+[mcp_servers.ym-novel-mcp.env]
+YM_NOVEL_MCP_DB_PATH = "C:/Users/32633/Desktop/fanqianmcp/data/novel.db"
+```
+
+如果路径包含空格，优先使用仓库内脚本路径并确保外层 MCP 客户端正确传参，不要在 JSON/TOML 中手写未转义的裸反斜杠。
+
+## 推荐 Claude Code 配置
+
+仓库已提供项目级 `.mcp.json`：
+
+```json
+{
+  "mcpServers": {
+    "ym-novel-mcp": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/d", "/c", "${CLAUDE_PROJECT_DIR:-.}\\bin\\ym-novel-mcp-stdio.cmd"],
+      "env": {
+        "YM_NOVEL_MCP_DB_PATH": "${CLAUDE_PROJECT_DIR:-.}\\data\\novel.db"
+      }
+    }
+  }
+}
+```
+
+可选安装 Codex + Claude Code 双版本 skill：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\bin\install-agent-skills.ps1
+```
+
+## 500 万到 1000 万字推荐流程
+
+1. 用 `create_project` 建项目，设置题材、平台、目标字数和风格。
+2. 用 `add_world_item` 记录不可违背的世界规则、地点、势力、战力体系和禁忌。
+3. 用 `add_character` 与 `add_character_relationship` 维护人物状态、地点、能力和关系张力。
+4. 用 `create_volume` 和 `create_chapter_outline` 先搭卷目标与近期章节骨架，不需要一次性规划全书。
+5. 每章写完后用 `save_chapter` 存正文，随后用 `build_post_chapter_update_prompt` 让外部 AI 抽取结构化更新。
+6. 把抽取结果人工确认后写回人物、世界观、伏笔、时间线和摘要。
+7. 写下一章前先用 `build_next_chapter_context` 或 `plan_next_chapter` 获取上下文和候选大纲。
+8. 新草稿落库前用 `check_continuity` 做本地连续性预检。
+9. 定期用 `export_project` 做结构化备份；迁移或复制项目时用 `import_project` 默认 `new_project` 模式。
 
 ## 数据库说明
 
@@ -238,40 +305,11 @@ Claude Code 克隆仓库后，可以直接在项目内读取 `.mcp.json` 和 `.c
 - `chapters_fts`
 - `world_items_fts`
 
-迁移：
+启动时会确认 schema 对象存在；如果 FTS 行数和主表行数不一致，会按项目重建 FTS 索引。
 
-- 通过 `src/db/migrations.ts` 管理
-- 当前 schema 版本为 `1`
+## 下一阶段建议
 
-## 开发命令
-
-```bash
-pnpm dev
-pnpm build
-pnpm typecheck
-pnpm lint
-pnpm test
-```
-
-## 测试覆盖
-
-当前测试覆盖了这些关键流程：
-
-- 创建项目并初始化默认写作规则
-- 添加人物
-- 添加世界观
-- 保存章节并回写字数
-- 搜索章节
-- 获取最近章节
-- 添加与回收伏笔
-- 构建下一章写作上下文
-- 连续性检查返回 warnings
-
-## 后续路线图
-
-- 增加更细的 canon fact 自动抽取与更新策略
-- 增加跨表聚合搜索工具
-- 增加更强的连续性规则库
-- 增加可选 PostgreSQL / 向量库后端
-- 增加 Web 管理后台
-- 增加导入导出与数据快照能力
+- 增加“章节整理结果导入”工具，把 `build_post_chapter_update_prompt` 的 JSON 输出批量写回数据库。
+- 增强连续性规则库，加入战力等级、角色位置跨度、时间线顺序和伏笔超期检查。
+- 增加项目快照和差异对比，便于超长篇长期回滚。
+- 增加跨表聚合搜索工具，统一搜索人物、世界观、章节、伏笔、时间线和 canon facts。

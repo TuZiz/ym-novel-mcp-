@@ -4,11 +4,13 @@ import { NovelDatabase } from "./db/index.js";
 import { registerNovelPrompts } from "./prompts/novelPrompts.js";
 import { registerNovelResources } from "./resources/novelResources.js";
 import { ChapterService } from "./services/chapterService.js";
+import { ChapterPipelineService } from "./services/chapterPipelineService.js";
 import { CharacterService } from "./services/characterService.js";
 import { ContinuityService } from "./services/continuityService.js";
 import { ForeshadowingService } from "./services/foreshadowingService.js";
 import { OutlineService } from "./services/outlineService.js";
 import { ProjectService } from "./services/projectService.js";
+import { ProjectTransferService } from "./services/projectTransferService.js";
 import { SearchService } from "./services/searchService.js";
 import { TimelineService } from "./services/timelineService.js";
 import { WorldService } from "./services/worldService.js";
@@ -67,6 +69,10 @@ export function createApp(overrides?: Partial<AppConfig>): AppInstance {
 
 function createServices(database: NovelDatabase): AppServices {
   const projectService = new ProjectService(database.db);
+  const projectTransferService = new ProjectTransferService(
+    database.db,
+    projectService
+  );
   const outlineService = new OutlineService(database.db, projectService);
   const chapterService = new ChapterService(database.db, projectService, outlineService);
   const worldService = new WorldService(database.db, projectService);
@@ -106,9 +112,15 @@ function createServices(database: NovelDatabase): AppServices {
     timelineService,
     searchService
   );
+  const chapterPipelineService = new ChapterPipelineService(
+    projectService,
+    chapterService,
+    writingContextService
+  );
 
   return {
     projectService,
+    projectTransferService,
     worldService,
     characterService,
     outlineService,
@@ -117,6 +129,7 @@ function createServices(database: NovelDatabase): AppServices {
     timelineService,
     searchService,
     continuityService,
-    writingContextService
+    writingContextService,
+    chapterPipelineService
   };
 }
