@@ -37,30 +37,33 @@ Prompt arguments follow MCP's string argument convention. Pass `chapterIndex` as
 ### Continue an Existing Story
 
 1. `list_projects` or `get_project`
-2. `get_recent_chapters`
-3. `list_open_foreshadowings`
-4. `get_timeline`
-5. `plan_next_chapter` or `build_next_chapter_context`
+2. `search_all` when the user asks about a broad term across chapters, characters, world, timeline, foreshadowings, and canon
+3. `get_recent_chapters`
+4. `list_open_foreshadowings`
+5. `get_timeline`
+6. `plan_next_chapter` or `build_next_chapter_context`
 
 ### Save a Finished Chapter
 
 1. `save_chapter`
 2. `build_post_chapter_update_prompt` when an external AI should extract updates
-3. `update_character_state` as needed
-4. `add_timeline_event`
-5. `add_foreshadowing` or `resolve_foreshadowing`
-6. `update_chapter_summary` if the stored summary needs a second pass
+3. `apply_post_chapter_update` after the structured extraction is confirmed
+4. `update_chapter_summary` if the stored summary needs a second pass
+5. `create_project_snapshot` after important chapter/state milestones
+6. Use manual tools such as `update_character_state`, `add_timeline_event`, `add_foreshadowing`, or `resolve_foreshadowing` only for targeted corrections outside the extraction flow
 
 ### Review a New Draft
 
-1. `search_chapters`
-2. `search_characters`
-3. `search_world_items`
-4. `check_continuity`
-5. `continuity-review` if the user wants an LLM review prompt
+1. `search_all`
+2. `search_chapters`, `search_characters`, or `search_world_items` for focused follow-up
+3. `check_continuity`
+4. `continuity-review` if the user wants an LLM review prompt
 
 ### Backup or Import
 
-1. `export_project`
-2. `import_project` with default `new_project` mode for safe copies
-3. `import_project` with `overwrite` only after explicit confirmation
+1. `create_project_snapshot`
+2. `list_project_snapshots`
+3. `get_project_snapshot`
+4. `export_project`
+5. `import_project` with default `new_project` mode for safe copies
+6. `import_project` with `overwrite` only after explicit confirmation

@@ -6,10 +6,12 @@ import type {
   CharacterRelationship,
   Foreshadowing,
   Project,
+  ProjectSnapshot,
+  ProjectSnapshotSummary,
   TimelineEvent,
   Volume,
   WorldItem,
-  WritingRule
+  WritingRule,
 } from "../types/novel.js";
 import { parseStringArray } from "./text.js";
 
@@ -19,7 +21,7 @@ function mapBaseRow(row: Row) {
   return {
     id: String(row.id),
     createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at)
+    updatedAt: String(row.updated_at),
   };
 }
 
@@ -32,7 +34,7 @@ export function mapProjectRow(row: Row): Project {
     targetWords: (row.target_words as number | null) ?? null,
     currentWords: Number(row.current_words ?? 0),
     style: (row.style as string | null) ?? null,
-    status: String(row.status)
+    status: String(row.status),
   };
 }
 
@@ -44,7 +46,7 @@ export function mapWorldItemRow(row: Row): WorldItem {
     name: String(row.name),
     content: String(row.content),
     importance: Number(row.importance ?? 0),
-    tags: parseStringArray(row.tags)
+    tags: parseStringArray(row.tags),
   };
 }
 
@@ -64,8 +66,10 @@ export function mapCharacterRow(row: Row): Character {
     powerLevel: (row.power_level as string | null) ?? null,
     location: (row.location as string | null) ?? null,
     status: String(row.status),
-    firstAppearanceChapter: (row.first_appearance_chapter as number | null) ?? null,
-    lastAppearanceChapter: (row.last_appearance_chapter as number | null) ?? null
+    firstAppearanceChapter:
+      (row.first_appearance_chapter as number | null) ?? null,
+    lastAppearanceChapter:
+      (row.last_appearance_chapter as number | null) ?? null,
   };
 }
 
@@ -79,7 +83,7 @@ export function mapCharacterRelationshipRow(row: Row): CharacterRelationship {
     description: (row.description as string | null) ?? null,
     currentState: (row.current_state as string | null) ?? null,
     tensionLevel: (row.tension_level as number | null) ?? null,
-    updatedChapterId: (row.updated_chapter_id as string | null) ?? null
+    updatedChapterId: (row.updated_chapter_id as string | null) ?? null,
   };
 }
 
@@ -94,7 +98,7 @@ export function mapVolumeRow(row: Row): Volume {
     startChapter: (row.start_chapter as number | null) ?? null,
     endChapter: (row.end_chapter as number | null) ?? null,
     summary: (row.summary as string | null) ?? null,
-    status: String(row.status)
+    status: String(row.status),
   };
 }
 
@@ -111,7 +115,7 @@ export function mapChapterOutlineRow(row: Row): ChapterOutline {
     requiredCharacters: parseStringArray(row.required_characters),
     requiredForeshadowing: parseStringArray(row.required_foreshadowing),
     endingHook: (row.ending_hook as string | null) ?? null,
-    status: String(row.status)
+    status: String(row.status),
   };
 }
 
@@ -130,7 +134,7 @@ export function mapChapterRow(row: Row): Chapter {
     hook: (row.hook as string | null) ?? null,
     involvedCharacters: parseStringArray(row.involved_characters),
     involvedWorldItems: parseStringArray(row.involved_world_items),
-    status: String(row.status)
+    status: String(row.status),
   };
 }
 
@@ -141,13 +145,14 @@ export function mapForeshadowingRow(row: Row): Foreshadowing {
     title: String(row.title),
     description: String(row.description),
     introducedChapterId: (row.introduced_chapter_id as string | null) ?? null,
-    expectedResolveChapter: (row.expected_resolve_chapter as number | null) ?? null,
+    expectedResolveChapter:
+      (row.expected_resolve_chapter as number | null) ?? null,
     resolvedChapterId: (row.resolved_chapter_id as string | null) ?? null,
     status: String(row.status),
     importance: Number(row.importance ?? 0),
     relatedCharacters: parseStringArray(row.related_characters),
     relatedWorldItems: parseStringArray(row.related_world_items),
-    notes: (row.notes as string | null) ?? null
+    notes: (row.notes as string | null) ?? null,
   };
 }
 
@@ -161,7 +166,7 @@ export function mapTimelineEventRow(row: Row): TimelineEvent {
     description: String(row.description),
     involvedCharacters: parseStringArray(row.involved_characters),
     location: (row.location as string | null) ?? null,
-    impact: (row.impact as string | null) ?? null
+    impact: (row.impact as string | null) ?? null,
   };
 }
 
@@ -174,7 +179,7 @@ export function mapCanonFactRow(row: Row): CanonFact {
     factType: String(row.fact_type),
     content: String(row.content),
     confidence: Number(row.confidence ?? 0),
-    importance: Number(row.importance ?? 0)
+    importance: Number(row.importance ?? 0),
   };
 }
 
@@ -185,6 +190,24 @@ export function mapWritingRuleRow(row: Row): WritingRule {
     ruleType: String(row.rule_type),
     content: String(row.content),
     priority: Number(row.priority ?? 0),
-    enabled: Boolean(row.enabled)
+    enabled: Boolean(row.enabled),
+  };
+}
+
+export function mapProjectSnapshotSummaryRow(row: Row): ProjectSnapshotSummary {
+  return {
+    ...mapBaseRow(row),
+    projectId: String(row.project_id),
+    label: (row.label as string | null) ?? null,
+    notes: (row.notes as string | null) ?? null,
+  };
+}
+
+export function mapProjectSnapshotRow(row: Row): ProjectSnapshot {
+  const content = JSON.parse(String(row.content)) as ProjectSnapshot["content"];
+
+  return {
+    ...mapProjectSnapshotSummaryRow(row),
+    content,
   };
 }

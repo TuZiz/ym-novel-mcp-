@@ -2,6 +2,7 @@ import type {
   BuildNextChapterContextInput,
   Chapter,
   Character,
+  Foreshadowing,
   NextChapterContext,
   WorldItem,
 } from "../types/novel.js";
@@ -54,9 +55,15 @@ export class WritingContextService {
       input.projectId,
       10,
     );
-    const timeline = this.timelineService
+    const overdueForeshadowings = this.buildOverdueForeshadowings(
+      input.projectId,
+      input.chapterIndex,
+    );
+    const recentTimelineEvents = this.timelineService
       .getTimeline(input.projectId)
       .slice(-12);
+    const timeline = recentTimelineEvents;
+    const canonFacts = this.projectService.listCanonFacts(input.projectId, 24);
     const writingRules = this.projectService.listWritingRules(input.projectId);
 
     const relevantCharacters = this.buildRelevantCharacters(
@@ -72,12 +79,23 @@ export class WritingContextService {
       chapterOutline?.goal,
       input.focus,
     );
+    const searchHints = this.buildSearchHints(
+      chapterOutline?.title,
+      chapterOutline?.goal,
+      chapterOutline?.conflict,
+      input.focus,
+      recentChapters.at(-1)?.hook,
+      overdueForeshadowings,
+    );
 
     const instruction = [
       `你正在续写长篇小说《${project.name}》的第 ${input.chapterIndex} 章。`,
+      "优先承接上一章 hook，不要跳过上一章危机。",
       "必须承接上一章结尾，不能跳过关键冲突。",
       "必须遵守既有世界观、人物状态、战力体系和写作规则。",
       "必须保持人物性格一致，不允许为了推进剧情硬改人设。",
+      "不要让角色瞬移，不要随便突破战力。",
+      "未回收伏笔要持续推进，超期伏笔必须优先处理或明确延后理由。",
       "本章需要推进当前冲突，并在结尾保留明确钩子。",
       "不要用总结代替剧情，不要输出解释，只输出可直接写正文的中文创作提示。",
       chapterOutline
@@ -99,8 +117,12 @@ export class WritingContextService {
       relevantCharacters,
       relevantWorldItems,
       openForeshadowings,
+      overdueForeshadowings,
       timeline,
+      recentTimelineEvents,
+      canonFacts,
       writingRules,
+      searchHints,
       instruction,
     };
   }
@@ -144,6 +166,42 @@ export class WritingContextService {
       : this.worldService.listWorldItems(projectId).slice(0, 6);
 
     return dedupeById([...explicit, ...searched]).slice(0, 10);
+  }
+
+  private buildOverdueForeshadowings(
+    projectId: string,
+    chapterIndex: number,
+  ): Foreshadowing[] {
+    return this.foreshadowingService
+      .listForeshadowings(projectId)
+      .filter(
+        (item) =>
+          ["open", "partially_resolved"].includes(item.status) &&
+          item.expectedResolveChapter !== null &&
+          item.expectedResolveChapter < chapterIndex,
+      )
+      .slice(0, 12);
+  }
+
+  private buildSearchHints(
+    title: string | null | undefined,
+    goal: string | null | undefined,
+    conflict: string | null | undefined,
+    focus: string | undefined,
+    previousHook: string | null | undefined,
+    overdueForeshadowings: Foreshadowing[],
+  ): string[] {
+    return [
+      title,
+      goal,
+      conflict,
+      focus,
+      previousHook,
+      ...overdueForeshadowings.map((item) => item.title),
+    ]
+      .map((hint) => hint?.trim())
+      .filter((hint): hint is string => Boolean(hint))
+      .slice(0, 12);
   }
 }
 

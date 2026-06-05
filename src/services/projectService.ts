@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import type {
+  CanonFact,
   CreateProjectInput,
   Project,
   UpdateProjectInput,
@@ -8,7 +9,11 @@ import type {
 import { AppError, assertFound } from "../utils/errors.js";
 import { createId } from "../utils/ids.js";
 import { patchValue } from "../utils/patch.js";
-import { mapProjectRow, mapWritingRuleRow } from "../utils/rows.js";
+import {
+  mapCanonFactRow,
+  mapProjectRow,
+  mapWritingRuleRow,
+} from "../utils/rows.js";
 import { nowIso } from "../utils/text.js";
 
 const defaultWritingRules = [
@@ -142,6 +147,20 @@ export class ProjectService {
       .all(projectId) as Record<string, unknown>[];
 
     return rows.map(mapWritingRuleRow);
+  }
+
+  listCanonFacts(projectId: string, limit = 50): CanonFact[] {
+    this.getProject(projectId);
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM canon_facts
+        WHERE project_id = ?
+        ORDER BY importance DESC, created_at DESC
+        LIMIT ?`,
+      )
+      .all(projectId, limit) as Record<string, unknown>[];
+
+    return rows.map(mapCanonFactRow);
   }
 
   refreshProjectWordCount(projectId: string): Project {

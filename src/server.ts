@@ -10,6 +10,7 @@ import { ContinuityService } from "./services/continuityService.js";
 import { ForeshadowingService } from "./services/foreshadowingService.js";
 import { OutlineService } from "./services/outlineService.js";
 import { ProjectService } from "./services/projectService.js";
+import { ProjectSnapshotService } from "./services/projectSnapshotService.js";
 import { ProjectTransferService } from "./services/projectTransferService.js";
 import { SearchService } from "./services/searchService.js";
 import { TimelineService } from "./services/timelineService.js";
@@ -22,6 +23,7 @@ import { registerContinuityTools } from "./tools/continuityTools.js";
 import { registerForeshadowingTools } from "./tools/foreshadowingTools.js";
 import { registerOutlineTools } from "./tools/outlineTools.js";
 import { registerProjectTools } from "./tools/projectTools.js";
+import { registerSearchTools } from "./tools/searchTools.js";
 import { registerTimelineTools } from "./tools/timelineTools.js";
 import { registerWorldTools } from "./tools/worldTools.js";
 import { registerWritingContextTools } from "./tools/writingContextTools.js";
@@ -40,7 +42,7 @@ export function createApp(overrides?: Partial<AppConfig>): AppInstance {
   const services = createServices(database);
   const server = new McpServer({
     name: "ym-novel-mcp",
-    version: "0.1.0"
+    version: "0.1.0",
   });
 
   registerProjectTools(server, services);
@@ -51,6 +53,7 @@ export function createApp(overrides?: Partial<AppConfig>): AppInstance {
   registerForeshadowingTools(server, services);
   registerTimelineTools(server, services);
   registerContinuityTools(server, services);
+  registerSearchTools(server, services);
   registerWritingContextTools(server, services);
   registerNovelResources(server, services);
   registerNovelPrompts(server, services);
@@ -63,7 +66,7 @@ export function createApp(overrides?: Partial<AppConfig>): AppInstance {
     async close() {
       await server.close();
       database.close();
-    }
+    },
   };
 }
 
@@ -71,27 +74,39 @@ function createServices(database: NovelDatabase): AppServices {
   const projectService = new ProjectService(database.db);
   const projectTransferService = new ProjectTransferService(
     database.db,
-    projectService
+    projectService,
+  );
+  const projectSnapshotService = new ProjectSnapshotService(
+    database.db,
+    projectService,
+    projectTransferService,
   );
   const outlineService = new OutlineService(database.db, projectService);
-  const chapterService = new ChapterService(database.db, projectService, outlineService);
+  const chapterService = new ChapterService(
+    database.db,
+    projectService,
+    outlineService,
+  );
   const worldService = new WorldService(database.db, projectService);
   const characterService = new CharacterService(database.db, projectService);
   const foreshadowingService = new ForeshadowingService(
     database.db,
     projectService,
-    chapterService
+    chapterService,
   );
   const timelineService = new TimelineService(
     database.db,
     projectService,
-    chapterService
+    chapterService,
   );
   const searchService = new SearchService(
+    database.db,
+    projectService,
     characterService,
     worldService,
     chapterService,
-    foreshadowingService
+    foreshadowingService,
+    timelineService,
   );
   const continuityService = new ContinuityService(
     projectService,
@@ -100,7 +115,7 @@ function createServices(database: NovelDatabase): AppServices {
     foreshadowingService,
     timelineService,
     chapterService,
-    searchService
+    searchService,
   );
   const writingContextService = new WritingContextService(
     projectService,
@@ -110,17 +125,24 @@ function createServices(database: NovelDatabase): AppServices {
     worldService,
     foreshadowingService,
     timelineService,
-    searchService
+    searchService,
   );
   const chapterPipelineService = new ChapterPipelineService(
+    database.db,
     projectService,
     chapterService,
-    writingContextService
+    writingContextService,
+    characterService,
+    worldService,
+    foreshadowingService,
+    timelineService,
+    searchService,
   );
 
   return {
     projectService,
     projectTransferService,
+    projectSnapshotService,
     worldService,
     characterService,
     outlineService,
@@ -130,6 +152,6 @@ function createServices(database: NovelDatabase): AppServices {
     searchService,
     continuityService,
     writingContextService,
-    chapterPipelineService
+    chapterPipelineService,
   };
 }

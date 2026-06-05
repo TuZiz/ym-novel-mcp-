@@ -139,6 +139,19 @@ export interface WritingRule extends BaseRecord {
   enabled: boolean;
 }
 
+export interface ProjectSnapshot extends BaseRecord {
+  projectId: string;
+  label: string | null;
+  notes: string | null;
+  content: ExportedProjectData;
+}
+
+export interface ProjectSnapshotSummary extends BaseRecord {
+  projectId: string;
+  label: string | null;
+  notes: string | null;
+}
+
 export interface ContinuityWarning {
   type: string;
   message: string;
@@ -159,8 +172,12 @@ export interface NextChapterContext {
   relevantCharacters: Character[];
   relevantWorldItems: WorldItem[];
   openForeshadowings: Foreshadowing[];
+  overdueForeshadowings: Foreshadowing[];
   timeline: TimelineEvent[];
+  recentTimelineEvents: TimelineEvent[];
+  canonFacts: CanonFact[];
   writingRules: WritingRule[];
+  searchHints: string[];
   instruction: string;
 }
 
@@ -226,6 +243,119 @@ export interface PlanNextChapterResult {
 export interface BuildPostChapterUpdatePromptInput {
   projectId: string;
   chapterIndex: number;
+}
+
+export interface ApplyPostChapterUpdateInput {
+  projectId: string;
+  chapterIndex: number;
+  update: {
+    summary?: string;
+    hook?: string;
+    characterUpdates?: Array<{
+      characterId?: string;
+      name?: string;
+      currentState?: string;
+      powerLevel?: string;
+      location?: string;
+      status?: string;
+      relationshipSummary?: string;
+      lastAppearanceChapter?: number;
+    }>;
+    newWorldItems?: Array<{
+      type: string;
+      name: string;
+      content: string;
+      importance?: number;
+      tags?: string[];
+    }>;
+    newForeshadowings?: Array<{
+      title: string;
+      description: string;
+      expectedResolveChapter?: number;
+      importance?: number;
+      relatedCharacters?: string[];
+      relatedWorldItems?: string[];
+      notes?: string;
+    }>;
+    resolvedForeshadowings?: Array<{
+      foreshadowingId: string;
+      resolvedChapterId?: string;
+      notes?: string;
+    }>;
+    timelineEvents?: Array<{
+      eventOrder?: number;
+      title: string;
+      description: string;
+      involvedCharacters?: string[];
+      location?: string;
+      impact?: string;
+    }>;
+    canonFacts?: Array<{
+      sourceType?: string;
+      factType: string;
+      content: string;
+      confidence?: number;
+      importance?: number;
+    }>;
+  };
+}
+
+export interface ApplyPostChapterUpdateWarning {
+  type: string;
+  message: string;
+  severity: "low" | "medium" | "high";
+}
+
+export interface ApplyPostChapterUpdateResult {
+  ok: boolean;
+  updatedChapter?: Chapter;
+  updatedCharacters: Character[];
+  addedWorldItems: WorldItem[];
+  addedForeshadowings: Foreshadowing[];
+  resolvedForeshadowings: Foreshadowing[];
+  addedTimelineEvents: TimelineEvent[];
+  addedCanonFacts: CanonFact[];
+  warnings: ApplyPostChapterUpdateWarning[];
+}
+
+export type SearchAllInclude =
+  | "chapters"
+  | "characters"
+  | "world_items"
+  | "foreshadowings"
+  | "timeline"
+  | "canon_facts";
+
+export interface SearchAllInput {
+  projectId: string;
+  query: string;
+  limit?: number;
+  include?: SearchAllInclude[];
+}
+
+export interface SearchAllResultItem {
+  type: SearchAllInclude;
+  id: string;
+  title: string;
+  snippet: string;
+  score?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface SearchAllResult {
+  query: string;
+  results: SearchAllResultItem[];
+}
+
+export interface CreateProjectSnapshotInput {
+  projectId: string;
+  label?: string;
+  notes?: string;
+}
+
+export interface ListProjectSnapshotsInput {
+  projectId: string;
+  limit?: number;
 }
 
 export interface CreateProjectInput {

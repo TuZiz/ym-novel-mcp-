@@ -169,6 +169,16 @@ export const schemaStatements = [
     updated_at TEXT NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS idx_writing_rules_project_priority ON writing_rules(project_id, priority)`,
+  `CREATE TABLE IF NOT EXISTS project_snapshots (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    label TEXT,
+    notes TEXT,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_project_snapshots_project_created ON project_snapshots(project_id, created_at DESC)`,
   `CREATE VIRTUAL TABLE IF NOT EXISTS chapters_fts USING fts5(
     project_id UNINDEXED,
     chapter_id UNINDEXED,
@@ -182,5 +192,5 @@ export const schemaStatements = [
     name,
     content,
     tags
-  )`
+  )`,
 ] as const;
