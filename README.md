@@ -42,6 +42,8 @@ pnpm dev
 pnpm start
 ```
 
+`pnpm build` 会把可执行入口输出到 `dist/index.js`，`pnpm start` 和 Windows stdio 脚本都使用这个构建产物。
+
 Windows 静默 stdio 启动脚本：
 
 ```bat
@@ -118,6 +120,8 @@ YM_NOVEL_MCP_DB_PATH=./data/novel.db
 - `plan_next_chapter`
 - `build_post_chapter_update_prompt`
 
+更新类工具中，省略字段表示保持原值；文档中标为 nullable 的字段可以传 `null` 清空，例如 `update_project.genre`、`update_volume.goal`、`update_chapter_outline.endingHook` 和 `update_character_relationship.description`。
+
 ## 第二阶段新增 Tools
 
 `export_project`
@@ -168,6 +172,8 @@ YM_NOVEL_MCP_DB_PATH=./data/novel.db
 
 为指定章节生成中文整理提示词，内含 JSON Schema，供外部 AI 从章节正文中抽取章节摘要、人物状态变化、人物位置变化、新增伏笔、已回收伏笔、世界观事实、时间线事件和下一章钩子。
 
+`build_next_chapter_context` 和 `plan_next_chapter` 会对返回上下文里的超长最近章节正文做有界压缩，保留开头与结尾，避免长篇项目在 MCP 响应中塞入过大的历史正文。需要完整正文时使用 `get_chapter` 或 `get_recent_chapters`。
+
 ## Resources
 
 - `novel://projects`
@@ -185,6 +191,8 @@ YM_NOVEL_MCP_DB_PATH=./data/novel.db
 - `summarize-chapter`
 - `extract-canon`
 - `continuity-review`
+
+Prompt 参数遵循 MCP 协议的字符串参数约定；例如 `chapterIndex` 可由客户端传入 `"1"`，服务端会校验并转换为正整数。
 
 ## MCP 端到端测试
 
@@ -204,6 +212,8 @@ YM_NOVEL_MCP_DB_PATH=./data/novel.db
 - `import_project`
 - `plan_next_chapter`
 - `build_post_chapter_update_prompt`
+
+`tests/stdio.test.ts` 会通过 MCP SDK 的 `StdioClientTransport` 启动 `src/index.ts`，验证真实 stdio 入口可以被 MCP 客户端连接并调用工具。
 
 运行：
 
@@ -257,7 +267,11 @@ YM_NOVEL_MCP_DB_PATH = "C:/Users/32633/Desktop/fanqianmcp/data/novel.db"
     "ym-novel-mcp": {
       "type": "stdio",
       "command": "cmd",
-      "args": ["/d", "/c", "${CLAUDE_PROJECT_DIR:-.}\\bin\\ym-novel-mcp-stdio.cmd"],
+      "args": [
+        "/d",
+        "/c",
+        "${CLAUDE_PROJECT_DIR:-.}\\bin\\ym-novel-mcp-stdio.cmd"
+      ],
       "env": {
         "YM_NOVEL_MCP_DB_PATH": "${CLAUDE_PROJECT_DIR:-.}\\data\\novel.db"
       }
@@ -305,7 +319,7 @@ powershell -ExecutionPolicy Bypass -File .\bin\install-agent-skills.ps1
 - `chapters_fts`
 - `world_items_fts`
 
-启动时会确认 schema 对象存在；如果 FTS 行数和主表行数不一致，会按项目重建 FTS 索引。
+启动时会确认 schema 对象存在；如果 FTS 行数和主表行数不一致，或章节、世界观主表内容与 FTS 内容发生漂移，会按项目重建 FTS 索引。
 
 ## 下一阶段建议
 

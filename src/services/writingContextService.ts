@@ -1,8 +1,9 @@
 import type {
   BuildNextChapterContextInput,
+  Chapter,
   Character,
   NextChapterContext,
-  WorldItem
+  WorldItem,
 } from "../types/novel.js";
 import { compactText } from "../utils/text.js";
 import { ChapterService } from "./chapterService.js";
@@ -14,6 +15,9 @@ import { SearchService } from "./searchService.js";
 import { TimelineService } from "./timelineService.js";
 import { WorldService } from "./worldService.js";
 
+const maxContextChapterContentChars = 2400;
+const omittedChapterContentMarker = "\n\n[...中间正文已为上下文省略...]\n\n";
+
 export class WritingContextService {
   constructor(
     private readonly projectService: ProjectService,
@@ -23,45 +27,50 @@ export class WritingContextService {
     private readonly worldService: WorldService,
     private readonly foreshadowingService: ForeshadowingService,
     private readonly timelineService: TimelineService,
-    private readonly searchService: SearchService
+    private readonly searchService: SearchService,
   ) {}
 
-  buildNextChapterContext(input: BuildNextChapterContextInput): NextChapterContext {
+  buildNextChapterContext(
+    input: BuildNextChapterContextInput,
+  ): NextChapterContext {
     const project = this.projectService.getProject(input.projectId);
     const currentVolume = input.volumeId
       ? this.outlineService.getVolume(input.projectId, input.volumeId)
       : this.outlineService.getCurrentVolume(input.projectId);
     const chapterOutline = this.outlineService.getChapterOutline(
       input.projectId,
-      input.chapterIndex
+      input.chapterIndex,
     );
     const recentChapters = this.chapterService
       .getRecentChapters({
         projectId: input.projectId,
         beforeChapterIndex: input.chapterIndex,
         limit: input.recentChapterLimit ?? 5,
-        includeContent: true
+        includeContent: true,
       })
-      .reverse();
+      .reverse()
+      .map(compactChapterForContext);
     const openForeshadowings = this.foreshadowingService.listOpenForeshadowings(
       input.projectId,
-      10
+      10,
     );
-    const timeline = this.timelineService.getTimeline(input.projectId).slice(-12);
+    const timeline = this.timelineService
+      .getTimeline(input.projectId)
+      .slice(-12);
     const writingRules = this.projectService.listWritingRules(input.projectId);
 
     const relevantCharacters = this.buildRelevantCharacters(
       input.projectId,
       chapterOutline?.requiredCharacters ?? [],
       recentChapters.flatMap((chapter) => chapter.involvedCharacters),
-      input.focus
+      input.focus,
     );
     const relevantWorldItems = this.buildRelevantWorldItems(
       input.projectId,
       recentChapters.flatMap((chapter) => chapter.involvedWorldItems),
       chapterOutline?.title,
       chapterOutline?.goal,
-      input.focus
+      input.focus,
     );
 
     const instruction = [
@@ -77,7 +86,7 @@ export class WritingContextService {
       currentVolume
         ? `当前卷：第 ${currentVolume.volumeIndex} 卷《${currentVolume.title}》。`
         : "当前卷信息暂缺。",
-      input.focus ? `本章聚焦：${input.focus}` : null
+      input.focus ? `本章聚焦：${input.focus}` : null,
     ]
       .filter((line): line is string => Boolean(line))
       .join("\n");
@@ -92,7 +101,7 @@ export class WritingContextService {
       openForeshadowings,
       timeline,
       writingRules,
-      instruction
+      instruction,
     };
   }
 
@@ -100,11 +109,11 @@ export class WritingContextService {
     projectId: string,
     outlineRefs: string[],
     recentRefs: string[],
-    focus?: string
+    focus?: string,
   ): Character[] {
     const explicit = this.searchService.resolveCharacters(projectId, [
       ...outlineRefs,
-      ...recentRefs
+      ...recentRefs,
     ]);
 
     if (explicit.length >= 6) {
@@ -123,9 +132,12 @@ export class WritingContextService {
     recentRefs: string[],
     title?: string | null,
     goal?: string | null,
-    focus?: string
+    focus?: string,
   ): WorldItem[] {
-    const explicit = this.searchService.resolveWorldItems(projectId, recentRefs);
+    const explicit = this.searchService.resolveWorldItems(
+      projectId,
+      recentRefs,
+    );
     const searchQuery = compactText(title ?? null, goal ?? null, focus ?? null);
     const searched = searchQuery
       ? this.worldService.searchWorldItems(projectId, searchQuery, undefined, 6)
@@ -133,6 +145,23 @@ export class WritingContextService {
 
     return dedupeById([...explicit, ...searched]).slice(0, 10);
   }
+}
+
+function compactChapterForContext(chapter: Chapter): Chapter {
+  if (chapter.content.length <= maxContextChapterContentChars) {
+    return chapter;
+  }
+
+  const sideLength = Math.floor(
+    (maxContextChapterContentChars - omittedChapterContentMarker.length) / 2,
+  );
+  const start = chapter.content.slice(0, sideLength);
+  const end = chapter.content.slice(chapter.content.length - sideLength);
+
+  return {
+    ...chapter,
+    content: `${start}${omittedChapterContentMarker}${end}`,
+  };
 }
 
 function dedupeById<T extends { id: string }>(items: T[]): T[] {

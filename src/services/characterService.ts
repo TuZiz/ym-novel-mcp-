@@ -5,21 +5,19 @@ import type {
   Character,
   CharacterRelationship,
   UpdateCharacterRelationshipInput,
-  UpdateCharacterStateInput
+  UpdateCharacterStateInput,
 } from "../types/novel.js";
 import { assertFound } from "../utils/errors.js";
 import { createId } from "../utils/ids.js";
-import {
-  mapCharacterRelationshipRow,
-  mapCharacterRow
-} from "../utils/rows.js";
+import { mapCharacterRelationshipRow, mapCharacterRow } from "../utils/rows.js";
+import { patchValue } from "../utils/patch.js";
 import { nowIso, serializeStringArray, uniqueStrings } from "../utils/text.js";
 import { ProjectService } from "./projectService.js";
 
 export class CharacterService {
   constructor(
     private readonly db: Database.Database,
-    private readonly projectService: ProjectService
+    private readonly projectService: ProjectService,
   ) {}
 
   addCharacter(input: AddCharacterInput): Character {
@@ -36,7 +34,7 @@ export class CharacterService {
             id, project_id, name, aliases, role, personality, motivation, ability, appearance,
             relationship_summary, current_state, power_level, location, status,
             first_appearance_chapter, last_appearance_chapter, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NULL, NULL, ?, ?)`
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NULL, NULL, ?, ?)`,
         )
         .run(
           id,
@@ -53,14 +51,14 @@ export class CharacterService {
           input.powerLevel ?? null,
           input.location ?? null,
           now,
-          now
+          now,
         );
 
       this.db
         .prepare(
           `INSERT INTO canon_facts (
             id, project_id, source_type, source_id, fact_type, content, confidence, importance, created_at, updated_at
-          ) VALUES (?, ?, 'character', ?, 'character_profile', ?, 0.92, 4, ?, ?)`
+          ) VALUES (?, ?, 'character', ?, 'character_profile', ?, 0.92, 4, ?, ?)`,
         )
         .run(
           createId("canon"),
@@ -68,7 +66,7 @@ export class CharacterService {
           id,
           `${input.name}｜角色=${input.role ?? "未设定"}｜状态=${input.currentState ?? "未设定"}｜地点=${input.location ?? "未设定"}`,
           now,
-          now
+          now,
         );
     });
 
@@ -82,13 +80,17 @@ export class CharacterService {
       .prepare("SELECT * FROM characters WHERE project_id = ? AND id = ?")
       .get(projectId, characterId) as Record<string, unknown> | undefined;
 
-    return mapCharacterRow(assertFound(row, `Character ${characterId} not found.`));
+    return mapCharacterRow(
+      assertFound(row, `Character ${characterId} not found.`),
+    );
   }
 
   listCharacters(projectId: string): Character[] {
     this.projectService.ensureProjectExists(projectId);
     const rows = this.db
-      .prepare("SELECT * FROM characters WHERE project_id = ? ORDER BY updated_at DESC")
+      .prepare(
+        "SELECT * FROM characters WHERE project_id = ? ORDER BY updated_at DESC",
+      )
       .all(projectId) as Record<string, unknown>[];
 
     return rows.map(mapCharacterRow);
@@ -111,12 +113,20 @@ export class CharacterService {
             motivation LIKE ? OR current_state LIKE ? OR power_level LIKE ? OR location LIKE ?
           )
         ORDER BY updated_at DESC
-        LIMIT ?`
+        LIMIT ?`,
       )
-      .all(projectId, like, like, like, like, like, like, like, like, limit) as Record<
-      string,
-      unknown
-    >[];
+      .all(
+        projectId,
+        like,
+        like,
+        like,
+        like,
+        like,
+        like,
+        like,
+        like,
+        limit,
+      ) as Record<string, unknown>[];
 
     return rows.map(mapCharacterRow);
   }
@@ -129,7 +139,7 @@ export class CharacterService {
       .prepare(
         `UPDATE characters
         SET current_state = ?, power_level = ?, location = ?, status = ?, last_appearance_chapter = ?, updated_at = ?
-        WHERE id = ? AND project_id = ?`
+        WHERE id = ? AND project_id = ?`,
       )
       .run(
         input.currentState ?? current.currentState,
@@ -139,13 +149,15 @@ export class CharacterService {
         input.lastAppearanceChapter ?? current.lastAppearanceChapter,
         updatedAt,
         input.characterId,
-        input.projectId
+        input.projectId,
       );
 
     return this.getCharacter(input.projectId, input.characterId);
   }
 
-  addCharacterRelationship(input: AddCharacterRelationshipInput): CharacterRelationship {
+  addCharacterRelationship(
+    input: AddCharacterRelationshipInput,
+  ): CharacterRelationship {
     this.getCharacter(input.projectId, input.characterAId);
     this.getCharacter(input.projectId, input.characterBId);
 
@@ -157,7 +169,7 @@ export class CharacterService {
         `INSERT INTO character_relationships (
           id, project_id, character_a_id, character_b_id, relationship_type, description,
           current_state, tension_level, updated_chapter_id, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -170,44 +182,52 @@ export class CharacterService {
         input.tensionLevel ?? null,
         input.updatedChapterId ?? null,
         now,
-        now
+        now,
       );
 
     return this.getCharacterRelationship(input.projectId, id);
   }
 
-  getCharacterRelationship(projectId: string, relationshipId: string): CharacterRelationship {
+  getCharacterRelationship(
+    projectId: string,
+    relationshipId: string,
+  ): CharacterRelationship {
     this.projectService.ensureProjectExists(projectId);
     const row = this.db
-      .prepare("SELECT * FROM character_relationships WHERE project_id = ? AND id = ?")
+      .prepare(
+        "SELECT * FROM character_relationships WHERE project_id = ? AND id = ?",
+      )
       .get(projectId, relationshipId) as Record<string, unknown> | undefined;
 
     return mapCharacterRelationshipRow(
-      assertFound(row, `Relationship ${relationshipId} not found.`)
+      assertFound(row, `Relationship ${relationshipId} not found.`),
     );
   }
 
   updateCharacterRelationship(
-    input: UpdateCharacterRelationshipInput
+    input: UpdateCharacterRelationshipInput,
   ): CharacterRelationship {
-    const current = this.getCharacterRelationship(input.projectId, input.relationshipId);
+    const current = this.getCharacterRelationship(
+      input.projectId,
+      input.relationshipId,
+    );
     const updatedAt = nowIso();
 
     this.db
       .prepare(
         `UPDATE character_relationships
         SET relationship_type = ?, description = ?, current_state = ?, tension_level = ?, updated_chapter_id = ?, updated_at = ?
-        WHERE id = ? AND project_id = ?`
+        WHERE id = ? AND project_id = ?`,
       )
       .run(
-        input.relationshipType ?? current.relationshipType,
-        input.description ?? current.description,
-        input.currentState ?? current.currentState,
-        input.tensionLevel ?? current.tensionLevel,
-        input.updatedChapterId ?? current.updatedChapterId,
+        patchValue(input.relationshipType, current.relationshipType),
+        patchValue(input.description, current.description),
+        patchValue(input.currentState, current.currentState),
+        patchValue(input.tensionLevel, current.tensionLevel),
+        patchValue(input.updatedChapterId, current.updatedChapterId),
         updatedAt,
         input.relationshipId,
-        input.projectId
+        input.projectId,
       );
 
     return this.getCharacterRelationship(input.projectId, input.relationshipId);

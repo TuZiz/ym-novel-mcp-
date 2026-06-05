@@ -3,10 +3,11 @@ import type {
   CreateProjectInput,
   Project,
   UpdateProjectInput,
-  WritingRule
+  WritingRule,
 } from "../types/novel.js";
 import { AppError, assertFound } from "../utils/errors.js";
 import { createId } from "../utils/ids.js";
+import { patchValue } from "../utils/patch.js";
 import { mapProjectRow, mapWritingRuleRow } from "../utils/rows.js";
 import { nowIso } from "../utils/text.js";
 
@@ -25,7 +26,7 @@ const defaultWritingRules = [
   "伏笔必须记录，不能随意丢弃。",
   "战力体系必须稳定，不能随意崩坏。",
   "人物关系变化必须有过程。",
-  "写作风格偏番茄小说，节奏快、爽点明确、情绪直接、钩子强。"
+  "写作风格偏番茄小说，节奏快、爽点明确、情绪直接、钩子强。",
 ];
 
 export class ProjectService {
@@ -39,7 +40,7 @@ export class ProjectService {
       .prepare(
         `INSERT INTO projects (
           id, name, genre, platform, target_words, current_words, style, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, 0, ?, 'planning', ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, 0, ?, 'planning', ?, ?)`,
       )
       .run(
         id,
@@ -49,19 +50,19 @@ export class ProjectService {
         input.targetWords ?? null,
         input.style ?? null,
         now,
-        now
+        now,
       );
 
     const insertRule = this.db.prepare(
       `INSERT INTO writing_rules (
         id, project_id, rule_type, content, priority, enabled, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, 1, ?, ?)`
+      ) VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
     );
 
     const insertCanonFact = this.db.prepare(
       `INSERT INTO canon_facts (
         id, project_id, source_type, source_id, fact_type, content, confidence, importance, created_at, updated_at
-      ) VALUES (?, ?, 'project', ?, 'project_goal', ?, 0.95, 5, ?, ?)`
+      ) VALUES (?, ?, 'project', ?, 'project_goal', ?, 0.95, 5, ?, ?)`,
     );
 
     const transaction = this.db.transaction(() => {
@@ -73,7 +74,7 @@ export class ProjectService {
           rule,
           index + 1,
           now,
-          now
+          now,
         );
       });
 
@@ -83,7 +84,7 @@ export class ProjectService {
         id,
         `项目《${input.name}》已初始化，目标是长期维护的长篇小说创作。`,
         now,
-        now
+        now,
       );
     });
 
@@ -115,18 +116,18 @@ export class ProjectService {
       .prepare(
         `UPDATE projects
         SET name = ?, genre = ?, platform = ?, target_words = ?, current_words = ?, style = ?, status = ?, updated_at = ?
-        WHERE id = ?`
+        WHERE id = ?`,
       )
       .run(
-        patch.name ?? current.name,
-        patch.genre ?? current.genre,
-        patch.platform ?? current.platform,
-        patch.targetWords ?? current.targetWords,
-        patch.currentWords ?? current.currentWords,
-        patch.style ?? current.style,
-        patch.status ?? current.status,
+        patchValue(patch.name, current.name),
+        patchValue(patch.genre, current.genre),
+        patchValue(patch.platform, current.platform),
+        patchValue(patch.targetWords, current.targetWords),
+        patchValue(patch.currentWords, current.currentWords),
+        patchValue(patch.style, current.style),
+        patchValue(patch.status, current.status),
         updatedAt,
-        projectId
+        projectId,
       );
 
     return this.getProject(projectId);
@@ -136,7 +137,7 @@ export class ProjectService {
     this.getProject(projectId);
     const rows = this.db
       .prepare(
-        "SELECT * FROM writing_rules WHERE project_id = ? ORDER BY priority ASC, created_at ASC"
+        "SELECT * FROM writing_rules WHERE project_id = ? ORDER BY priority ASC, created_at ASC",
       )
       .all(projectId) as Record<string, unknown>[];
 
@@ -151,7 +152,7 @@ export class ProjectService {
         `UPDATE projects
         SET current_words = COALESCE((SELECT SUM(word_count) FROM chapters WHERE project_id = ?), 0),
             updated_at = ?
-        WHERE id = ?`
+        WHERE id = ?`,
       )
       .run(projectId, nowIso(), projectId);
 

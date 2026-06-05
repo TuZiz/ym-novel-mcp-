@@ -21,6 +21,7 @@ Use resources when the user wants current project state in a readable snapshot a
 - `continuity-review`
 
 Use prompts when the user needs a model-facing instruction package, not when the user is asking to mutate stored state directly.
+Prompt arguments follow MCP's string argument convention. Pass `chapterIndex` as a string like `"1"`; the server validates and coerces it.
 
 ## Recommended Call Order
 

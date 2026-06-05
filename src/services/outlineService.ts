@@ -5,10 +5,11 @@ import type {
   CreateVolumeInput,
   UpdateChapterOutlineInput,
   UpdateVolumeInput,
-  Volume
+  Volume,
 } from "../types/novel.js";
 import { assertFound } from "../utils/errors.js";
 import { createId } from "../utils/ids.js";
+import { patchValue } from "../utils/patch.js";
 import { mapChapterOutlineRow, mapVolumeRow } from "../utils/rows.js";
 import { nowIso, serializeStringArray, uniqueStrings } from "../utils/text.js";
 import { ProjectService } from "./projectService.js";
@@ -16,7 +17,7 @@ import { ProjectService } from "./projectService.js";
 export class OutlineService {
   constructor(
     private readonly db: Database.Database,
-    private readonly projectService: ProjectService
+    private readonly projectService: ProjectService,
   ) {}
 
   createVolume(input: CreateVolumeInput): Volume {
@@ -29,7 +30,7 @@ export class OutlineService {
       .prepare(
         `INSERT INTO volumes (
           id, project_id, volume_index, title, goal, conflict, start_chapter, end_chapter, summary, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -43,7 +44,7 @@ export class OutlineService {
         input.summary ?? null,
         input.status ?? "planned",
         now,
-        now
+        now,
       );
 
     return this.getVolume(input.projectId, id);
@@ -65,7 +66,7 @@ export class OutlineService {
         `SELECT * FROM volumes
         WHERE project_id = ?
         ORDER BY CASE WHEN status IN ('active', 'drafting', 'planned') THEN 0 ELSE 1 END, volume_index DESC
-        LIMIT 1`
+        LIMIT 1`,
       )
       .get(projectId) as Record<string, unknown> | undefined;
 
@@ -80,19 +81,19 @@ export class OutlineService {
       .prepare(
         `UPDATE volumes
         SET title = ?, goal = ?, conflict = ?, start_chapter = ?, end_chapter = ?, summary = ?, status = ?, updated_at = ?
-        WHERE id = ? AND project_id = ?`
+        WHERE id = ? AND project_id = ?`,
       )
       .run(
-        input.title ?? current.title,
-        input.goal ?? current.goal,
-        input.conflict ?? current.conflict,
-        input.startChapter ?? current.startChapter,
-        input.endChapter ?? current.endChapter,
-        input.summary ?? current.summary,
-        input.status ?? current.status,
+        patchValue(input.title, current.title),
+        patchValue(input.goal, current.goal),
+        patchValue(input.conflict, current.conflict),
+        patchValue(input.startChapter, current.startChapter),
+        patchValue(input.endChapter, current.endChapter),
+        patchValue(input.summary, current.summary),
+        patchValue(input.status, current.status),
         updatedAt,
         input.volumeId,
-        input.projectId
+        input.projectId,
       );
 
     return this.getVolume(input.projectId, input.volumeId);
@@ -101,7 +102,9 @@ export class OutlineService {
   listVolumes(projectId: string): Volume[] {
     this.projectService.ensureProjectExists(projectId);
     const rows = this.db
-      .prepare("SELECT * FROM volumes WHERE project_id = ? ORDER BY volume_index ASC")
+      .prepare(
+        "SELECT * FROM volumes WHERE project_id = ? ORDER BY volume_index ASC",
+      )
       .all(projectId) as Record<string, unknown>[];
 
     return rows.map(mapVolumeRow);
@@ -121,7 +124,7 @@ export class OutlineService {
         `INSERT INTO chapter_outlines (
           id, project_id, volume_id, chapter_index, title, goal, conflict, key_events,
           required_characters, required_foreshadowing, ending_hook, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -137,17 +140,20 @@ export class OutlineService {
         input.endingHook ?? null,
         input.status ?? "planned",
         now,
-        now
+        now,
       );
 
     return this.getChapterOutlineById(input.projectId, id);
   }
 
-  getChapterOutline(projectId: string, chapterIndex: number): ChapterOutline | null {
+  getChapterOutline(
+    projectId: string,
+    chapterIndex: number,
+  ): ChapterOutline | null {
     this.projectService.ensureProjectExists(projectId);
     const row = this.db
       .prepare(
-        "SELECT * FROM chapter_outlines WHERE project_id = ? AND chapter_index = ?"
+        "SELECT * FROM chapter_outlines WHERE project_id = ? AND chapter_index = ?",
       )
       .get(projectId, chapterIndex) as Record<string, unknown> | undefined;
 
@@ -160,28 +166,35 @@ export class OutlineService {
       .prepare("SELECT * FROM chapter_outlines WHERE project_id = ? AND id = ?")
       .get(projectId, outlineId) as Record<string, unknown> | undefined;
 
-    return mapChapterOutlineRow(assertFound(row, `Outline ${outlineId} not found.`));
+    return mapChapterOutlineRow(
+      assertFound(row, `Outline ${outlineId} not found.`),
+    );
   }
 
   listChapterOutlines(projectId: string, volumeId?: string): ChapterOutline[] {
     this.projectService.ensureProjectExists(projectId);
-    const rows = (volumeId
-      ? this.db
-          .prepare(
-            "SELECT * FROM chapter_outlines WHERE project_id = ? AND volume_id = ? ORDER BY chapter_index ASC"
-          )
-          .all(projectId, volumeId)
-      : this.db
-          .prepare(
-            "SELECT * FROM chapter_outlines WHERE project_id = ? ORDER BY chapter_index ASC"
-          )
-          .all(projectId)) as Record<string, unknown>[];
+    const rows = (
+      volumeId
+        ? this.db
+            .prepare(
+              "SELECT * FROM chapter_outlines WHERE project_id = ? AND volume_id = ? ORDER BY chapter_index ASC",
+            )
+            .all(projectId, volumeId)
+        : this.db
+            .prepare(
+              "SELECT * FROM chapter_outlines WHERE project_id = ? ORDER BY chapter_index ASC",
+            )
+            .all(projectId)
+    ) as Record<string, unknown>[];
 
     return rows.map(mapChapterOutlineRow);
   }
 
   updateChapterOutline(input: UpdateChapterOutlineInput): ChapterOutline {
-    const current = this.getChapterOutlineById(input.projectId, input.outlineId);
+    const current = this.getChapterOutlineById(
+      input.projectId,
+      input.outlineId,
+    );
     const updatedAt = nowIso();
 
     this.db
@@ -189,27 +202,27 @@ export class OutlineService {
         `UPDATE chapter_outlines
         SET chapter_index = ?, title = ?, goal = ?, conflict = ?, key_events = ?,
             required_characters = ?, required_foreshadowing = ?, ending_hook = ?, status = ?, updated_at = ?
-        WHERE id = ? AND project_id = ?`
+        WHERE id = ? AND project_id = ?`,
       )
       .run(
-        input.chapterIndex ?? current.chapterIndex,
-        input.title ?? current.title,
-        input.goal ?? current.goal,
-        input.conflict ?? current.conflict,
-        input.keyEvents ?? current.keyEvents,
+        patchValue(input.chapterIndex, current.chapterIndex),
+        patchValue(input.title, current.title),
+        patchValue(input.goal, current.goal),
+        patchValue(input.conflict, current.conflict),
+        patchValue(input.keyEvents, current.keyEvents),
         serializeStringArray(
-          uniqueStrings(input.requiredCharacters ?? current.requiredCharacters)
+          uniqueStrings(input.requiredCharacters ?? current.requiredCharacters),
         ),
         serializeStringArray(
           uniqueStrings(
-            input.requiredForeshadowing ?? current.requiredForeshadowing
-          )
+            input.requiredForeshadowing ?? current.requiredForeshadowing,
+          ),
         ),
-        input.endingHook ?? current.endingHook,
-        input.status ?? current.status,
+        patchValue(input.endingHook, current.endingHook),
+        patchValue(input.status, current.status),
         updatedAt,
         input.outlineId,
-        input.projectId
+        input.projectId,
       );
 
     return this.getChapterOutlineById(input.projectId, input.outlineId);

@@ -68,6 +68,7 @@ Use the local `ym-novel-mcp` server as the source of truth for long-form novel w
 
 ## Prompts and Resources
 
+- Prompt arguments follow MCP's string argument convention. Pass values such as `chapterIndex` as strings like `"1"`; the server validates and coerces them.
 - Use prompt `write-next-chapter` when the user wants a chapter-writing instruction package.
 - Use prompt `summarize-chapter` when the user wants a summary prompt, not the final summary itself.
 - Use prompt `extract-canon` when the user wants structured canon extraction guidance.

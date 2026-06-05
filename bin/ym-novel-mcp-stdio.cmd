@@ -26,10 +26,10 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist "dist\src\index.js" (
-  >&2 echo [ym-novel-mcp] Missing dist\src\index.js after build.
+if not exist "dist\index.js" (
+  >&2 echo [ym-novel-mcp] Missing dist\index.js after build.
   exit /b 1
 )
 
-node "dist\src\index.js"
+node "dist\index.js"
 exit /b %errorlevel%

@@ -3,13 +3,18 @@ import type { AddWorldItemInput, WorldItem } from "../types/novel.js";
 import { assertFound } from "../utils/errors.js";
 import { createId } from "../utils/ids.js";
 import { mapWorldItemRow } from "../utils/rows.js";
-import { buildFtsQuery, nowIso, serializeStringArray, uniqueStrings } from "../utils/text.js";
+import {
+  buildFtsQuery,
+  nowIso,
+  serializeStringArray,
+  uniqueStrings,
+} from "../utils/text.js";
 import { ProjectService } from "./projectService.js";
 
 export class WorldService {
   constructor(
     private readonly db: Database.Database,
-    private readonly projectService: ProjectService
+    private readonly projectService: ProjectService,
   ) {}
 
   addWorldItem(input: AddWorldItemInput): WorldItem {
@@ -18,13 +23,14 @@ export class WorldService {
     const id = createId("world");
     const now = nowIso();
     const tags = uniqueStrings(input.tags ?? []);
+    const serializedTags = serializeStringArray(tags);
 
     const transaction = this.db.transaction(() => {
       this.db
         .prepare(
           `INSERT INTO world_items (
             id, project_id, type, name, content, importance, tags, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           id,
@@ -33,9 +39,9 @@ export class WorldService {
           input.name,
           input.content,
           input.importance ?? 3,
-          serializeStringArray(tags),
+          serializedTags,
           now,
-          now
+          now,
         );
 
       this.db
@@ -44,15 +50,15 @@ export class WorldService {
       this.db
         .prepare(
           `INSERT INTO world_items_fts (project_id, world_item_id, name, content, tags)
-          VALUES (?, ?, ?, ?, ?)`
+          VALUES (?, ?, ?, ?, ?)`,
         )
-        .run(input.projectId, id, input.name, input.content, tags.join(" "));
+        .run(input.projectId, id, input.name, input.content, serializedTags);
 
       this.db
         .prepare(
           `INSERT INTO canon_facts (
             id, project_id, source_type, source_id, fact_type, content, confidence, importance, created_at, updated_at
-          ) VALUES (?, ?, 'world_item', ?, ?, ?, 0.9, ?, ?, ?)`
+          ) VALUES (?, ?, 'world_item', ?, ?, ?, 0.9, ?, ?, ?)`,
         )
         .run(
           createId("canon"),
@@ -62,7 +68,7 @@ export class WorldService {
           `${input.name}: ${input.content}`,
           input.importance ?? 3,
           now,
-          now
+          now,
         );
     });
 
@@ -77,14 +83,16 @@ export class WorldService {
       .prepare("SELECT * FROM world_items WHERE project_id = ? AND id = ?")
       .get(projectId, worldItemId) as Record<string, unknown> | undefined;
 
-    return mapWorldItemRow(assertFound(row, `World item ${worldItemId} not found.`));
+    return mapWorldItemRow(
+      assertFound(row, `World item ${worldItemId} not found.`),
+    );
   }
 
   listWorldItems(projectId: string): WorldItem[] {
     this.projectService.ensureProjectExists(projectId);
     const rows = this.db
       .prepare(
-        "SELECT * FROM world_items WHERE project_id = ? ORDER BY importance DESC, updated_at DESC"
+        "SELECT * FROM world_items WHERE project_id = ? ORDER BY importance DESC, updated_at DESC",
       )
       .all(projectId) as Record<string, unknown>[];
 
@@ -95,7 +103,7 @@ export class WorldService {
     projectId: string,
     query: string,
     type?: string,
-    limit = 8
+    limit = 8,
   ): WorldItem[] {
     this.projectService.ensureProjectExists(projectId);
 
@@ -103,9 +111,11 @@ export class WorldService {
       const sql = type
         ? "SELECT * FROM world_items WHERE project_id = ? AND type = ? ORDER BY importance DESC, updated_at DESC LIMIT ?"
         : "SELECT * FROM world_items WHERE project_id = ? ORDER BY importance DESC, updated_at DESC LIMIT ?";
-      const rows = (type
-        ? this.db.prepare(sql).all(projectId, type, limit)
-        : this.db.prepare(sql).all(projectId, limit)) as Record<string, unknown>[];
+      const rows = (
+        type
+          ? this.db.prepare(sql).all(projectId, type, limit)
+          : this.db.prepare(sql).all(projectId, limit)
+      ) as Record<string, unknown>[];
       return rows.map(mapWorldItemRow);
     }
 
@@ -115,27 +125,29 @@ export class WorldService {
     }
 
     try {
-      const rows = (type
-        ? this.db
-            .prepare(
-              `SELECT w.*
+      const rows = (
+        type
+          ? this.db
+              .prepare(
+                `SELECT w.*
               FROM world_items_fts f
               JOIN world_items w ON w.id = f.world_item_id
               WHERE f.project_id = ? AND w.type = ? AND world_items_fts MATCH ?
               ORDER BY w.importance DESC, w.updated_at DESC
-              LIMIT ?`
-            )
-            .all(projectId, type, ftsQuery, limit)
-        : this.db
-            .prepare(
-              `SELECT w.*
+              LIMIT ?`,
+              )
+              .all(projectId, type, ftsQuery, limit)
+          : this.db
+              .prepare(
+                `SELECT w.*
               FROM world_items_fts f
               JOIN world_items w ON w.id = f.world_item_id
               WHERE f.project_id = ? AND world_items_fts MATCH ?
               ORDER BY w.importance DESC, w.updated_at DESC
-              LIMIT ?`
-            )
-            .all(projectId, ftsQuery, limit)) as Record<string, unknown>[];
+              LIMIT ?`,
+              )
+              .all(projectId, ftsQuery, limit)
+      ) as Record<string, unknown>[];
 
       if (rows.length > 0) {
         return rows.map(mapWorldItemRow);
@@ -145,23 +157,25 @@ export class WorldService {
     }
 
     const like = `%${query.trim()}%`;
-    const rows = (type
-      ? this.db
-          .prepare(
-            `SELECT * FROM world_items
+    const rows = (
+      type
+        ? this.db
+            .prepare(
+              `SELECT * FROM world_items
             WHERE project_id = ? AND type = ? AND (name LIKE ? OR content LIKE ? OR tags LIKE ?)
             ORDER BY importance DESC, updated_at DESC
-            LIMIT ?`
-          )
-          .all(projectId, type, like, like, like, limit)
-      : this.db
-          .prepare(
-            `SELECT * FROM world_items
+            LIMIT ?`,
+            )
+            .all(projectId, type, like, like, like, limit)
+        : this.db
+            .prepare(
+              `SELECT * FROM world_items
             WHERE project_id = ? AND (name LIKE ? OR content LIKE ? OR tags LIKE ?)
             ORDER BY importance DESC, updated_at DESC
-            LIMIT ?`
-          )
-          .all(projectId, like, like, like, limit)) as Record<string, unknown>[];
+            LIMIT ?`,
+            )
+            .all(projectId, like, like, like, limit)
+    ) as Record<string, unknown>[];
 
     return rows.map(mapWorldItemRow);
   }

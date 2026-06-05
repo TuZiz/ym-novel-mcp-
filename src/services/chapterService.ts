@@ -3,7 +3,7 @@ import type {
   Chapter,
   GetRecentChaptersInput,
   SaveChapterInput,
-  UpdateChapterSummaryInput
+  UpdateChapterSummaryInput,
 } from "../types/novel.js";
 import { assertFound } from "../utils/errors.js";
 import { createId } from "../utils/ids.js";
@@ -15,7 +15,7 @@ import {
   excerptStart,
   nowIso,
   serializeStringArray,
-  uniqueStrings
+  uniqueStrings,
 } from "../utils/text.js";
 import { OutlineService } from "./outlineService.js";
 import { ProjectService } from "./projectService.js";
@@ -24,7 +24,7 @@ export class ChapterService {
   constructor(
     private readonly db: Database.Database,
     private readonly projectService: ProjectService,
-    private readonly outlineService: OutlineService
+    private readonly outlineService: OutlineService,
   ) {}
 
   saveChapter(input: SaveChapterInput): Chapter {
@@ -34,7 +34,9 @@ export class ChapterService {
     }
 
     const existing = this.db
-      .prepare("SELECT id, created_at FROM chapters WHERE project_id = ? AND chapter_index = ?")
+      .prepare(
+        "SELECT id, created_at FROM chapters WHERE project_id = ? AND chapter_index = ?",
+      )
       .get(input.projectId, input.chapterIndex) as
       | { id: string; created_at: string }
       | undefined;
@@ -55,7 +57,7 @@ export class ChapterService {
             `UPDATE chapters
             SET volume_id = ?, title = ?, content = ?, summary = ?, word_count = ?, opening = ?, ending = ?,
                 hook = ?, involved_characters = ?, involved_world_items = ?, status = ?, updated_at = ?
-            WHERE id = ?`
+            WHERE id = ?`,
           )
           .run(
             input.volumeId ?? null,
@@ -70,7 +72,7 @@ export class ChapterService {
             serializeStringArray(involvedWorldItems),
             input.status ?? "draft",
             updatedAt,
-            chapterId
+            chapterId,
           );
       } else {
         this.db
@@ -78,7 +80,7 @@ export class ChapterService {
             `INSERT INTO chapters (
               id, project_id, volume_id, chapter_index, title, content, summary, word_count, opening, ending,
               hook, involved_characters, involved_world_items, status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .run(
             chapterId,
@@ -96,34 +98,24 @@ export class ChapterService {
             serializeStringArray(involvedWorldItems),
             input.status ?? "draft",
             createdAt,
-            updatedAt
+            updatedAt,
           );
       }
 
-      this.db.prepare("DELETE FROM chapters_fts WHERE chapter_id = ?").run(chapterId);
+      this.db
+        .prepare("DELETE FROM chapters_fts WHERE chapter_id = ?")
+        .run(chapterId);
       this.db
         .prepare(
           `INSERT INTO chapters_fts (project_id, chapter_id, title, summary, content)
-          VALUES (?, ?, ?, ?, ?)`
+          VALUES (?, ?, ?, ?, ?)`,
         )
         .run(
           input.projectId,
           chapterId,
           input.title,
           input.summary ?? "",
-          input.content
-        );
-
-      this.db
-        .prepare(
-          `UPDATE characters
-          SET first_appearance_chapter = COALESCE(first_appearance_chapter, ?),
-              last_appearance_chapter = CASE
-                WHEN last_appearance_chapter IS NULL OR last_appearance_chapter < ? THEN ?
-                ELSE last_appearance_chapter
-              END,
-              updated_at = ?
-          WHERE id = ? AND project_id = ?`
+          input.content,
         );
 
       const updateCharacterAppearance = this.db.prepare(
@@ -134,7 +126,7 @@ export class ChapterService {
               ELSE last_appearance_chapter
             END,
             updated_at = ?
-        WHERE id = ? AND project_id = ?`
+        WHERE id = ? AND project_id = ?`,
       );
 
       involvedCharacters.forEach((characterId) => {
@@ -144,7 +136,7 @@ export class ChapterService {
           input.chapterIndex,
           updatedAt,
           characterId,
-          input.projectId
+          input.projectId,
         );
       });
 
@@ -152,7 +144,7 @@ export class ChapterService {
         .prepare(
           `UPDATE chapter_outlines
           SET status = 'written', updated_at = ?
-          WHERE project_id = ? AND chapter_index = ?`
+          WHERE project_id = ? AND chapter_index = ?`,
         )
         .run(updatedAt, input.projectId, input.chapterIndex);
 
@@ -160,15 +152,16 @@ export class ChapterService {
         .prepare(
           `INSERT INTO canon_facts (
             id, project_id, source_type, source_id, fact_type, content, confidence, importance, created_at, updated_at
-          ) VALUES (?, ?, 'chapter', ?, 'chapter_summary', ?, 0.88, 3, ?, ?)`
+          ) VALUES (?, ?, 'chapter', ?, 'chapter_summary', ?, 0.88, 3, ?, ?)`,
         )
         .run(
           createId("canon"),
           input.projectId,
           chapterId,
-          input.summary ?? `${input.title}：${excerptStart(input.content, 80) ?? ""}`,
+          input.summary ??
+            `${input.title}：${excerptStart(input.content, 80) ?? ""}`,
           updatedAt,
-          updatedAt
+          updatedAt,
         );
     });
 
@@ -189,7 +182,9 @@ export class ChapterService {
   getChapterByIndex(projectId: string, chapterIndex: number): Chapter | null {
     this.projectService.ensureProjectExists(projectId);
     const row = this.db
-      .prepare("SELECT * FROM chapters WHERE project_id = ? AND chapter_index = ?")
+      .prepare(
+        "SELECT * FROM chapters WHERE project_id = ? AND chapter_index = ?",
+      )
       .get(projectId, chapterIndex) as Record<string, unknown> | undefined;
 
     return row ? mapChapterRow(row) : null;
@@ -198,7 +193,9 @@ export class ChapterService {
   listChapters(projectId: string): Chapter[] {
     this.projectService.ensureProjectExists(projectId);
     const rows = this.db
-      .prepare("SELECT * FROM chapters WHERE project_id = ? ORDER BY chapter_index ASC")
+      .prepare(
+        "SELECT * FROM chapters WHERE project_id = ? ORDER BY chapter_index ASC",
+      )
       .all(projectId) as Record<string, unknown>[];
 
     return rows.map(mapChapterRow);
@@ -208,23 +205,25 @@ export class ChapterService {
     this.projectService.ensureProjectExists(input.projectId);
     const limit = input.limit ?? 5;
 
-    const rows = (input.beforeChapterIndex
-      ? this.db
-          .prepare(
-            `SELECT * FROM chapters
+    const rows = (
+      input.beforeChapterIndex
+        ? this.db
+            .prepare(
+              `SELECT * FROM chapters
             WHERE project_id = ? AND chapter_index < ?
             ORDER BY chapter_index DESC
-            LIMIT ?`
-          )
-          .all(input.projectId, input.beforeChapterIndex, limit)
-      : this.db
-          .prepare(
-            `SELECT * FROM chapters
+            LIMIT ?`,
+            )
+            .all(input.projectId, input.beforeChapterIndex, limit)
+        : this.db
+            .prepare(
+              `SELECT * FROM chapters
             WHERE project_id = ?
             ORDER BY chapter_index DESC
-            LIMIT ?`
-          )
-          .all(input.projectId, limit)) as Record<string, unknown>[];
+            LIMIT ?`,
+            )
+            .all(input.projectId, limit)
+    ) as Record<string, unknown>[];
 
     return rows.map((row) => {
       const chapter = mapChapterRow(row);
@@ -238,7 +237,7 @@ export class ChapterService {
       return this.getRecentChapters({
         projectId,
         limit,
-        includeContent: false
+        includeContent: false,
       });
     }
 
@@ -255,7 +254,7 @@ export class ChapterService {
           JOIN chapters c ON c.id = f.chapter_id
           WHERE f.project_id = ? AND chapters_fts MATCH ?
           ORDER BY c.chapter_index DESC
-          LIMIT ?`
+          LIMIT ?`,
         )
         .all(projectId, ftsQuery, limit) as Record<string, unknown>[];
 
@@ -272,7 +271,7 @@ export class ChapterService {
         `SELECT * FROM chapters
         WHERE project_id = ? AND (title LIKE ? OR summary LIKE ? OR content LIKE ?)
         ORDER BY chapter_index DESC
-        LIMIT ?`
+        LIMIT ?`,
       )
       .all(projectId, like, like, like, limit) as Record<string, unknown>[];
 
@@ -284,21 +283,25 @@ export class ChapterService {
     const updatedAt = nowIso();
 
     this.db
-      .prepare("UPDATE chapters SET summary = ?, updated_at = ? WHERE id = ? AND project_id = ?")
+      .prepare(
+        "UPDATE chapters SET summary = ?, updated_at = ? WHERE id = ? AND project_id = ?",
+      )
       .run(input.summary, updatedAt, input.chapterId, input.projectId);
 
-    this.db.prepare("DELETE FROM chapters_fts WHERE chapter_id = ?").run(input.chapterId);
+    this.db
+      .prepare("DELETE FROM chapters_fts WHERE chapter_id = ?")
+      .run(input.chapterId);
     this.db
       .prepare(
         `INSERT INTO chapters_fts (project_id, chapter_id, title, summary, content)
-        VALUES (?, ?, ?, ?, ?)`
+        VALUES (?, ?, ?, ?, ?)`,
       )
       .run(
         input.projectId,
         input.chapterId,
         current.title,
         input.summary,
-        current.content
+        current.content,
       );
 
     return this.getChapter(input.projectId, input.chapterId);
