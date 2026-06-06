@@ -7,6 +7,8 @@ export function registerForeshadowingTools(
   server: McpServer,
   services: AppServices
 ): void {
+  const log = (toolName: string) => ({ services, toolName });
+
   server.registerTool(
     "add_foreshadowing",
     {
@@ -23,7 +25,10 @@ export function registerForeshadowingTools(
         notes: z.string().optional()
       }
     },
-    wrapToolHandler((args) => services.foreshadowingService.addForeshadowing(args))
+    wrapToolHandler(
+      (args) => services.foreshadowingService.addForeshadowing(args),
+      log("add_foreshadowing"),
+    )
   );
 
   server.registerTool(
@@ -52,7 +57,10 @@ export function registerForeshadowingTools(
         notes: z.string().optional()
       }
     },
-    wrapToolHandler((args) => services.foreshadowingService.resolveForeshadowing(args))
+    wrapToolHandler(
+      (args) => services.foreshadowingService.resolveForeshadowing(args),
+      log("resolve_foreshadowing"),
+    )
   );
 
   server.registerTool(

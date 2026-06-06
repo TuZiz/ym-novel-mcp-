@@ -16,6 +16,8 @@ export function registerSearchTools(
   server: McpServer,
   services: AppServices,
 ): void {
+  const log = (toolName: string) => ({ services, toolName });
+
   server.registerTool(
     "search_all",
     {
@@ -28,6 +30,6 @@ export function registerSearchTools(
         include: z.array(searchAllIncludeSchema).optional(),
       },
     },
-    wrapToolHandler((args) => services.searchService.searchAll(args)),
+    wrapToolHandler((args) => services.searchService.searchAll(args), log("search_all")),
   );
 }

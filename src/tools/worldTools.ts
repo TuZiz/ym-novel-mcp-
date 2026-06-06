@@ -4,6 +4,8 @@ import type { AppServices } from "../types/app.js";
 import { wrapToolHandler } from "./toolUtils.js";
 
 export function registerWorldTools(server: McpServer, services: AppServices): void {
+  const log = (toolName: string) => ({ services, toolName });
+
   server.registerTool(
     "add_world_item",
     {
@@ -17,7 +19,7 @@ export function registerWorldTools(server: McpServer, services: AppServices): vo
         tags: z.array(z.string()).optional()
       }
     },
-    wrapToolHandler((args) => services.worldService.addWorldItem(args))
+    wrapToolHandler((args) => services.worldService.addWorldItem(args), log("add_world_item"))
   );
 
   server.registerTool(

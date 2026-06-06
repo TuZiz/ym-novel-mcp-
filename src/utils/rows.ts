@@ -4,12 +4,15 @@ import type {
   ChapterOutline,
   Character,
   CharacterRelationship,
+  ExperienceRecord,
+  FeedbackEvent,
   Foreshadowing,
   Project,
   ProjectSnapshot,
   ProjectSnapshotSummary,
   TimelineEvent,
   Volume,
+  WorkflowRun,
   WorldItem,
   WritingRule,
 } from "../types/novel.js";
@@ -191,6 +194,52 @@ export function mapWritingRuleRow(row: Row): WritingRule {
     content: String(row.content),
     priority: Number(row.priority ?? 0),
     enabled: Boolean(row.enabled),
+  };
+}
+
+export function mapExperienceRecordRow(row: Row): ExperienceRecord {
+  return {
+    ...mapBaseRow(row),
+    projectId: (row.project_id as string | null) ?? null,
+    scope: row.scope as ExperienceRecord["scope"],
+    type: row.type as ExperienceRecord["type"],
+    title: String(row.title),
+    content: String(row.content),
+    reason: (row.reason as string | null) ?? null,
+    tags: parseStringArray(row.tags),
+    sourceType: (row.source_type as string | null) ?? null,
+    sourceId: (row.source_id as string | null) ?? null,
+    confidence: Number(row.confidence ?? 0),
+    score: Number(row.score ?? 0),
+    usageCount: Number(row.usage_count ?? 0),
+    lastUsedAt: (row.last_used_at as string | null) ?? null,
+    status: String(row.status),
+  };
+}
+
+export function mapFeedbackEventRow(row: Row): FeedbackEvent {
+  return {
+    id: String(row.id),
+    projectId: (row.project_id as string | null) ?? null,
+    targetType: String(row.target_type),
+    targetId: (row.target_id as string | null) ?? null,
+    rating: (row.rating as number | null) ?? null,
+    feedback: String(row.feedback),
+    action: (row.action as FeedbackEvent["action"]) ?? null,
+    createdAt: String(row.created_at),
+  };
+}
+
+export function mapWorkflowRunRow(row: Row): WorkflowRun {
+  return {
+    id: String(row.id),
+    projectId: String(row.project_id),
+    workflowType: String(row.workflow_type),
+    inputSummary: (row.input_summary as string | null) ?? null,
+    outputSummary: (row.output_summary as string | null) ?? null,
+    result: row.result as WorkflowRun["result"],
+    notes: (row.notes as string | null) ?? null,
+    createdAt: String(row.created_at),
   };
 }
 

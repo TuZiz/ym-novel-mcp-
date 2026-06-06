@@ -19,6 +19,7 @@ import { nowIso } from "../utils/text.js";
 import { ChapterService } from "./chapterService.js";
 import { CharacterService } from "./characterService.js";
 import { ForeshadowingService } from "./foreshadowingService.js";
+import { LearningMemoryService } from "./learningMemoryService.js";
 import { ProjectService } from "./projectService.js";
 import { SearchService } from "./searchService.js";
 import { TimelineService } from "./timelineService.js";
@@ -36,6 +37,7 @@ export class ChapterPipelineService {
     private readonly foreshadowingService: ForeshadowingService,
     private readonly timelineService: TimelineService,
     private readonly searchService: SearchService,
+    private readonly learningMemoryService: LearningMemoryService,
   ) {}
 
   planNextChapter(input: PlanNextChapterInput): PlanNextChapterResult {
@@ -73,6 +75,8 @@ export class ChapterPipelineService {
       `请为《${context.project.name}》第 ${input.chapterIndex} 章撰写详细正文前大纲。`,
       "不要调用外部资料，不要改写既有设定，不要跳过上一章钩子。",
       "优先使用 outlineSuggestion 作为章节骨架，并参考 context 中的最近章节、人物状态、世界观规则、未回收伏笔和写作规则。",
+      "规划时优先参考 learningContext.bestPractices，避免 learningContext.avoidPatterns，尊重 learningContext.userPreferences，并遵守 learningContext.styleRules。",
+      context.learningContext.instruction,
       input.focus ? `本章聚焦：${input.focus}` : null,
       "输出时保持结构清晰：章节目标、冲突推进、关键事件、人物状态变化、结尾钩子。",
     ]
@@ -215,7 +219,7 @@ export class ChapterPipelineService {
 
     transaction();
 
-    return {
+    const result: ApplyPostChapterUpdateResult = {
       ok: warnings.every((warning) => warning.severity !== "high"),
       updatedChapter,
       updatedCharacters,
@@ -226,6 +230,20 @@ export class ChapterPipelineService {
       addedCanonFacts,
       warnings,
     };
+
+    this.learningMemoryService.recordWorkflowRun({
+      projectId: input.projectId,
+      workflowType: "post_chapter_update",
+      inputSummary: `chapterIndex=${input.chapterIndex}`,
+      outputSummary: buildPostUpdateWorkflowSummary(result),
+      result: "success",
+      notes:
+        warnings.length > 0
+          ? warnings.map((warning) => warning.type).join(", ")
+          : undefined,
+    });
+
+    return result;
   }
 
   buildPostChapterUpdatePrompt(
@@ -617,4 +635,19 @@ function splitEvents(value: string | null): string[] {
     .split(/\r?\n|[;；。]/u)
     .map((event) => event.trim())
     .filter(Boolean);
+}
+
+function buildPostUpdateWorkflowSummary(
+  result: ApplyPostChapterUpdateResult,
+): string {
+  return [
+    result.updatedChapter ? "chapter=updated" : "chapter=unchanged",
+    `characters=${result.updatedCharacters.length}`,
+    `worldItems=${result.addedWorldItems.length}`,
+    `foreshadowingsAdded=${result.addedForeshadowings.length}`,
+    `foreshadowingsResolved=${result.resolvedForeshadowings.length}`,
+    `timelineEvents=${result.addedTimelineEvents.length}`,
+    `canonFacts=${result.addedCanonFacts.length}`,
+    `warnings=${result.warnings.length}`,
+  ].join("; ");
 }

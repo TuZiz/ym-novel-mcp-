@@ -6,7 +6,12 @@ const transport = new StdioServerTransport();
 
 async function main(): Promise<void> {
   await app.server.connect(transport);
-  console.error(`ym-novel-mcp running on stdio with db=${app.config.dbPath}`);
+  console.error("========================================");
+  console.error("[ym-novel-mcp] stdio MCP server is READY");
+  console.error(`Database : ${app.config.dbPath}`);
+  console.error("Status   : waiting for an MCP client over stdio");
+  console.error("Note     : this window is not an interactive shell.");
+  console.error("========================================");
 }
 
 process.on("SIGINT", async () => {

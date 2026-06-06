@@ -82,6 +82,8 @@ export function registerWritingContextTools(
   server: McpServer,
   services: AppServices,
 ): void {
+  const log = (toolName: string) => ({ services, toolName });
+
   server.registerTool(
     "build_next_chapter_context",
     {
@@ -96,6 +98,7 @@ export function registerWritingContextTools(
     },
     wrapToolHandler((args) =>
       services.writingContextService.buildNextChapterContext(args),
+      log("build_next_chapter_context"),
     ),
   );
 
@@ -112,6 +115,7 @@ export function registerWritingContextTools(
     },
     wrapToolHandler((args) =>
       services.chapterPipelineService.planNextChapter(args),
+      log("plan_next_chapter"),
     ),
   );
 
@@ -126,6 +130,7 @@ export function registerWritingContextTools(
     },
     wrapToolHandler((args) =>
       services.chapterPipelineService.buildPostChapterUpdatePrompt(args),
+      log("build_post_chapter_update_prompt"),
     ),
   );
 
@@ -141,6 +146,7 @@ export function registerWritingContextTools(
     },
     wrapToolHandler((args) =>
       services.chapterPipelineService.applyPostChapterUpdate(args),
+      log("apply_post_chapter_update"),
     ),
   );
 }

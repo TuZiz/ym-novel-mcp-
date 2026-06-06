@@ -7,6 +7,8 @@ export function registerContinuityTools(
   server: McpServer,
   services: AppServices
 ): void {
+  const log = (toolName: string) => ({ services, toolName });
+
   server.registerTool(
     "check_continuity",
     {
@@ -19,6 +21,9 @@ export function registerContinuityTools(
         chapterIndex: z.number().int().positive().optional()
       }
     },
-    wrapToolHandler((args) => services.continuityService.checkContinuity(args))
+    wrapToolHandler(
+      (args) => services.continuityService.checkContinuity(args),
+      log("check_continuity"),
+    )
   );
 }

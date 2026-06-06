@@ -4,7 +4,7 @@ import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**", "data/**"]
+    ignores: ["dist/**", "node_modules/**", "data/**", "backups/**"],
   },
   eslint.configs.recommended,
   {
@@ -12,16 +12,18 @@ export default [
     languageOptions: {
       parser: tsParser,
       globals: {
+        Buffer: "readonly",
         console: "readonly",
-        process: "readonly"
-      }
+        process: "readonly",
+        URL: "readonly",
+      },
     },
     plugins: {
-      "@typescript-eslint": tsPlugin
+      "@typescript-eslint": tsPlugin,
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
-      "@typescript-eslint/no-explicit-any": "error"
-    }
-  }
+      "@typescript-eslint/no-explicit-any": "error",
+    },
+  },
 ];

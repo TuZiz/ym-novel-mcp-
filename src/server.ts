@@ -8,6 +8,8 @@ import { ChapterPipelineService } from "./services/chapterPipelineService.js";
 import { CharacterService } from "./services/characterService.js";
 import { ContinuityService } from "./services/continuityService.js";
 import { ForeshadowingService } from "./services/foreshadowingService.js";
+import { LearningMemoryService } from "./services/learningMemoryService.js";
+import { McpCallLogService } from "./services/mcpCallLogService.js";
 import { OutlineService } from "./services/outlineService.js";
 import { ProjectService } from "./services/projectService.js";
 import { ProjectSnapshotService } from "./services/projectSnapshotService.js";
@@ -21,6 +23,7 @@ import { registerChapterTools } from "./tools/chapterTools.js";
 import { registerCharacterTools } from "./tools/characterTools.js";
 import { registerContinuityTools } from "./tools/continuityTools.js";
 import { registerForeshadowingTools } from "./tools/foreshadowingTools.js";
+import { registerLearningMemoryTools } from "./tools/learningMemoryTools.js";
 import { registerOutlineTools } from "./tools/outlineTools.js";
 import { registerProjectTools } from "./tools/projectTools.js";
 import { registerSearchTools } from "./tools/searchTools.js";
@@ -54,6 +57,7 @@ export function createApp(overrides?: Partial<AppConfig>): AppInstance {
   registerTimelineTools(server, services);
   registerContinuityTools(server, services);
   registerSearchTools(server, services);
+  registerLearningMemoryTools(server, services);
   registerWritingContextTools(server, services);
   registerNovelResources(server, services);
   registerNovelPrompts(server, services);
@@ -108,6 +112,11 @@ function createServices(database: NovelDatabase): AppServices {
     foreshadowingService,
     timelineService,
   );
+  const learningMemoryService = new LearningMemoryService(
+    database.db,
+    projectService,
+  );
+  const mcpCallLogService = new McpCallLogService(database.db);
   const continuityService = new ContinuityService(
     projectService,
     characterService,
@@ -116,6 +125,7 @@ function createServices(database: NovelDatabase): AppServices {
     timelineService,
     chapterService,
     searchService,
+    learningMemoryService,
   );
   const writingContextService = new WritingContextService(
     projectService,
@@ -126,6 +136,7 @@ function createServices(database: NovelDatabase): AppServices {
     foreshadowingService,
     timelineService,
     searchService,
+    learningMemoryService,
   );
   const chapterPipelineService = new ChapterPipelineService(
     database.db,
@@ -137,6 +148,7 @@ function createServices(database: NovelDatabase): AppServices {
     foreshadowingService,
     timelineService,
     searchService,
+    learningMemoryService,
   );
 
   return {
@@ -150,6 +162,8 @@ function createServices(database: NovelDatabase): AppServices {
     foreshadowingService,
     timelineService,
     searchService,
+    learningMemoryService,
+    mcpCallLogService,
     continuityService,
     writingContextService,
     chapterPipelineService,

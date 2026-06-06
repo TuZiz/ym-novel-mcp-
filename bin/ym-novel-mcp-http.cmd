@@ -2,9 +2,9 @@
 setlocal
 cd /d "%~dp0\.."
 
->&2 echo [ym-novel-mcp] STDIO startup check
->&2 echo [ym-novel-mcp] Repo: %CD%
->&2 echo [ym-novel-mcp] Preparing stdio MCP...
+echo [ym-novel-mcp] HTTP startup check
+echo [ym-novel-mcp] Repo: %CD%
+echo [ym-novel-mcp] Preparing Streamable HTTP MCP...
 
 set "PNPM_CMD=pnpm.cmd"
 where pnpm.cmd >nul 2>nul
@@ -22,7 +22,7 @@ if errorlevel 1 (
   )
 )
 
->&2 echo [ym-novel-mcp] Package manager: %PNPM_CMD%
+echo [ym-novel-mcp] Package manager: %PNPM_CMD%
 
 set "PNPM_INSTALL_ARGS=install --frozen-lockfile --prefer-offline --fetch-retries 5 --fetch-retry-mintimeout 10000 --fetch-retry-maxtimeout 120000"
 
@@ -39,11 +39,11 @@ if "%NODE_CMD%"=="node" (
   )
 )
 
->&2 echo [ym-novel-mcp] Node: %NODE_CMD%
+echo [ym-novel-mcp] Node: %NODE_CMD%
 
-if exist "dist\index.js" if exist "node_modules" (
-  >&2 echo [ym-novel-mcp] Found bundled dist and node_modules. Skipping install/build.
-  goto start_stdio_server
+if exist "dist\httpIndex.js" if exist "node_modules" (
+  echo [ym-novel-mcp] Found bundled dist and node_modules. Skipping install/build.
+  goto start_http_server
 )
 
 if not exist "node_modules" (
@@ -64,15 +64,15 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist "dist\index.js" (
-  >&2 echo [ym-novel-mcp] Missing dist\index.js after build.
+if not exist "dist\httpIndex.js" (
+  >&2 echo [ym-novel-mcp] Missing dist\httpIndex.js after build.
   exit /b 1
 )
 
->&2 echo [ym-novel-mcp] Build OK. Starting server now...
+echo [ym-novel-mcp] Build OK. Starting server now...
 
-:start_stdio_server
-"%NODE_CMD%" "dist\index.js"
+:start_http_server
+"%NODE_CMD%" "dist\httpIndex.js"
 exit /b %errorlevel%
 
 :install_dependencies

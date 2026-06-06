@@ -8,6 +8,7 @@ import type {
 import { ChapterService } from "./chapterService.js";
 import { CharacterService } from "./characterService.js";
 import { ForeshadowingService } from "./foreshadowingService.js";
+import { LearningMemoryService } from "./learningMemoryService.js";
 import { ProjectService } from "./projectService.js";
 import { SearchService } from "./searchService.js";
 import { TimelineService } from "./timelineService.js";
@@ -42,6 +43,7 @@ export class ContinuityService {
     private readonly timelineService: TimelineService,
     private readonly chapterService: ChapterService,
     private readonly searchService: SearchService,
+    private readonly learningMemoryService: LearningMemoryService,
   ) {}
 
   checkContinuity(input: CheckContinuityInput): ContinuityCheckResult {
@@ -181,6 +183,49 @@ export class ContinuityService {
           message: `草稿疑似否定重要设定事实：「${fact.content}」。`,
         });
       }
+    }
+
+    const learnedAvoidPatterns = this.learningMemoryService.findDraftRisks(
+      input.projectId,
+      input.draftContent,
+      "avoid_pattern",
+    );
+    for (const experience of learnedAvoidPatterns) {
+      warnings.push({
+        type: "learned_avoid_pattern_risk",
+        severity: "medium",
+        relatedId: experience.id,
+        message: `草稿疑似触犯用户否定过的写法「${experience.title}」：${experience.content}`,
+      });
+    }
+
+    const learnedPreferenceConflicts =
+      this.learningMemoryService.findDraftRisks(
+        input.projectId,
+        input.draftContent,
+        "user_preference",
+      );
+    for (const experience of learnedPreferenceConflicts) {
+      warnings.push({
+        type: "user_preference_conflict",
+        severity: "medium",
+        relatedId: experience.id,
+        message: `草稿疑似违背用户偏好「${experience.title}」：${experience.content}`,
+      });
+    }
+
+    const learnedCanonConflicts = this.learningMemoryService.findDraftRisks(
+      input.projectId,
+      input.draftContent,
+      "canon_decision",
+    );
+    for (const experience of learnedCanonConflicts) {
+      warnings.push({
+        type: "learned_canon_decision_conflict",
+        severity: "high",
+        relatedId: experience.id,
+        message: `草稿疑似否定用户确认过的设定决策「${experience.title}」：${experience.content}`,
+      });
     }
 
     if (

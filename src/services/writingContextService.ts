@@ -10,6 +10,7 @@ import { compactText } from "../utils/text.js";
 import { ChapterService } from "./chapterService.js";
 import { CharacterService } from "./characterService.js";
 import { ForeshadowingService } from "./foreshadowingService.js";
+import { LearningMemoryService } from "./learningMemoryService.js";
 import { OutlineService } from "./outlineService.js";
 import { ProjectService } from "./projectService.js";
 import { SearchService } from "./searchService.js";
@@ -29,6 +30,7 @@ export class WritingContextService {
     private readonly foreshadowingService: ForeshadowingService,
     private readonly timelineService: TimelineService,
     private readonly searchService: SearchService,
+    private readonly learningMemoryService: LearningMemoryService,
   ) {}
 
   buildNextChapterContext(
@@ -87,6 +89,20 @@ export class WritingContextService {
       recentChapters.at(-1)?.hook,
       overdueForeshadowings,
     );
+    const learningContext = this.learningMemoryService.getLearningContext({
+      projectId: input.projectId,
+      chapterIndex: input.chapterIndex,
+      focus: input.focus,
+      query: compactText(
+        input.focus ?? null,
+        chapterOutline?.title ?? null,
+        chapterOutline?.goal ?? null,
+        chapterOutline?.conflict ?? null,
+        recentChapters.at(-1)?.hook ?? null,
+        searchHints.join("\n"),
+      ),
+      limit: 6,
+    });
 
     const instruction = [
       `你正在续写长篇小说《${project.name}》的第 ${input.chapterIndex} 章。`,
@@ -96,8 +112,12 @@ export class WritingContextService {
       "必须保持人物性格一致，不允许为了推进剧情硬改人设。",
       "不要让角色瞬移，不要随便突破战力。",
       "未回收伏笔要持续推进，超期伏笔必须优先处理或明确延后理由。",
+      "请优先遵守 learningContext 中用户确认过的正确方案。",
+      "请避免 learningContext 中记录过的错误写法。",
+      "如果 learningContext 与普通上下文冲突，以 canon facts 和用户明确确认的经验为准。",
       "本章需要推进当前冲突，并在结尾保留明确钩子。",
       "不要用总结代替剧情，不要输出解释，只输出可直接写正文的中文创作提示。",
+      learningContext.instruction,
       chapterOutline
         ? `当前章节大纲：标题《${chapterOutline.title}》；目标=${chapterOutline.goal ?? "未填写"}；冲突=${chapterOutline.conflict ?? "未填写"}。`
         : "当前章节尚无大纲，请优先根据最近剧情和未回收伏笔稳妥续写。",
@@ -122,6 +142,7 @@ export class WritingContextService {
       recentTimelineEvents,
       canonFacts,
       writingRules,
+      learningContext,
       searchHints,
       instruction,
     };

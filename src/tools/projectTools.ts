@@ -7,6 +7,8 @@ export function registerProjectTools(
   server: McpServer,
   services: AppServices,
 ): void {
+  const log = (toolName: string) => ({ services, toolName });
+
   server.registerTool(
     "create_project",
     {
@@ -19,7 +21,10 @@ export function registerProjectTools(
         style: z.string().optional(),
       },
     },
-    wrapToolHandler((args) => services.projectService.createProject(args)),
+    wrapToolHandler(
+      (args) => services.projectService.createProject(args),
+      log("create_project"),
+    ),
   );
 
   server.registerTool(
@@ -109,7 +114,7 @@ export function registerProjectTools(
         notes: snapshot.notes ?? undefined,
         createdAt: snapshot.createdAt,
       };
-    }),
+    }, log("create_project_snapshot")),
   );
 
   server.registerTool(

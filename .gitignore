@@ -1,6 +1,10 @@
 node_modules/
 dist/
 coverage/
+backups/
+release/
+.pnpm-store/
+*.zip
 data/*.db
 data/*.db-shm
 data/*.db-wal

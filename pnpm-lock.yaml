@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@hono/node-server':
+        specifier: ^1.19.14
+        version: 1.19.14(hono@4.12.23)
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
@@ -17,6 +20,9 @@ importers:
       dotenv:
         specifier: ^17.2.1
         version: 17.4.2
+      hono:
+        specifier: ^4.12.23
+        version: 4.12.23
       zod:
         specifier: ^4.4.3
         version: 4.4.3

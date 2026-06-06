@@ -4,6 +4,8 @@ import type { AppServices } from "../types/app.js";
 import { wrapToolHandler } from "./toolUtils.js";
 
 export function registerCharacterTools(server: McpServer, services: AppServices): void {
+  const log = (toolName: string) => ({ services, toolName });
+
   server.registerTool(
     "add_character",
     {
@@ -23,7 +25,7 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         location: z.string().optional()
       }
     },
-    wrapToolHandler((args) => services.characterService.addCharacter(args))
+    wrapToolHandler((args) => services.characterService.addCharacter(args), log("add_character"))
   );
 
   server.registerTool(
@@ -69,7 +71,10 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         lastAppearanceChapter: z.number().int().positive().optional()
       }
     },
-    wrapToolHandler((args) => services.characterService.updateCharacterState(args))
+    wrapToolHandler(
+      (args) => services.characterService.updateCharacterState(args),
+      log("update_character_state"),
+    )
   );
 
   server.registerTool(
@@ -87,7 +92,10 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         updatedChapterId: z.string().optional()
       }
     },
-    wrapToolHandler((args) => services.characterService.addCharacterRelationship(args))
+    wrapToolHandler(
+      (args) => services.characterService.addCharacterRelationship(args),
+      log("add_character_relationship"),
+    )
   );
 
   server.registerTool(
@@ -104,8 +112,9 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         updatedChapterId: z.string().nullable().optional()
       }
     },
-    wrapToolHandler((args) =>
-      services.characterService.updateCharacterRelationship(args)
+    wrapToolHandler(
+      (args) => services.characterService.updateCharacterRelationship(args),
+      log("update_character_relationship"),
     )
   );
 }

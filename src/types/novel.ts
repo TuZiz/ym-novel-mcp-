@@ -139,6 +139,112 @@ export interface WritingRule extends BaseRecord {
   enabled: boolean;
 }
 
+export type ExperienceScope =
+  | "global"
+  | "project"
+  | "character"
+  | "world"
+  | "chapter"
+  | "style"
+  | "workflow";
+
+export type ExperienceType =
+  | "best_practice"
+  | "avoid_pattern"
+  | "user_preference"
+  | "correction"
+  | "successful_solution"
+  | "failed_solution"
+  | "style_rule"
+  | "workflow_rule"
+  | "canon_decision";
+
+export interface ExperienceRecord extends BaseRecord {
+  projectId: string | null;
+  scope: ExperienceScope;
+  type: ExperienceType;
+  title: string;
+  content: string;
+  reason: string | null;
+  tags: string[];
+  sourceType: string | null;
+  sourceId: string | null;
+  confidence: number;
+  score: number;
+  usageCount: number;
+  lastUsedAt: string | null;
+  status: string;
+}
+
+export type FeedbackAction =
+  | "accepted"
+  | "rejected"
+  | "corrected"
+  | "improved"
+  | "bad_result"
+  | "good_result";
+
+export interface FeedbackEvent {
+  id: string;
+  projectId: string | null;
+  targetType: string;
+  targetId: string | null;
+  rating: number | null;
+  feedback: string;
+  action: FeedbackAction | null;
+  createdAt: Timestamp;
+}
+
+export type WorkflowRunResult =
+  | "success"
+  | "partial"
+  | "failed"
+  | "user_rejected"
+  | "user_accepted";
+
+export interface WorkflowRun {
+  id: string;
+  projectId: string;
+  workflowType: string;
+  inputSummary: string | null;
+  outputSummary: string | null;
+  result: WorkflowRunResult;
+  notes: string | null;
+  createdAt: Timestamp;
+}
+
+export interface ExperienceSearchResultItem {
+  id: string;
+  scope: ExperienceScope;
+  type: ExperienceType;
+  title: string;
+  content: string;
+  reason?: string;
+  tags: string[];
+  confidence: number;
+  score: number;
+  usageCount: number;
+}
+
+export interface SearchExperiencesResult {
+  query: string;
+  results: ExperienceSearchResultItem[];
+}
+
+export interface LearningContextItem extends ExperienceSearchResultItem {
+  projectId: string | null;
+}
+
+export interface LearningContext {
+  bestPractices: LearningContextItem[];
+  avoidPatterns: LearningContextItem[];
+  userPreferences: LearningContextItem[];
+  styleRules: LearningContextItem[];
+  workflowRules: LearningContextItem[];
+  canonDecisions: LearningContextItem[];
+  instruction: string;
+}
+
 export interface ProjectSnapshot extends BaseRecord {
   projectId: string;
   label: string | null;
@@ -177,6 +283,7 @@ export interface NextChapterContext {
   recentTimelineEvents: TimelineEvent[];
   canonFacts: CanonFact[];
   writingRules: WritingRule[];
+  learningContext: LearningContext;
   searchHints: string[];
   instruction: string;
 }
@@ -238,6 +345,66 @@ export interface PlanNextChapterResult {
   outlineSuggestion: OutlineSuggestion;
   context: NextChapterContext;
   instruction: string;
+}
+
+export interface RecordExperienceInput {
+  projectId?: string;
+  scope: ExperienceScope;
+  type: ExperienceType;
+  title: string;
+  content: string;
+  reason?: string;
+  tags?: string[];
+  sourceType?: string;
+  sourceId?: string;
+  confidence?: number;
+}
+
+export interface SearchExperiencesInput {
+  projectId?: string;
+  query: string;
+  scope?: ExperienceScope;
+  type?: ExperienceType;
+  tags?: string[];
+  limit?: number;
+}
+
+export interface RecordFeedbackInput {
+  projectId?: string;
+  targetType: string;
+  targetId?: string;
+  rating?: number;
+  feedback: string;
+  action?: FeedbackAction;
+}
+
+export interface PromoteExperienceInput {
+  experienceId: string;
+  amount?: number;
+  reason?: string;
+}
+
+export interface SuppressExperienceInput {
+  experienceId: string;
+  amount?: number;
+  reason?: string;
+}
+
+export interface GetLearningContextInput {
+  projectId?: string;
+  query?: string;
+  chapterIndex?: number;
+  focus?: string;
+  limit?: number;
+}
+
+export interface RecordWorkflowRunInput {
+  projectId: string;
+  workflowType: string;
+  inputSummary?: string;
+  outputSummary?: string;
+  result: WorkflowRunResult;
+  notes?: string;
 }
 
 export interface BuildPostChapterUpdatePromptInput {

@@ -4,6 +4,8 @@ import type { AppServices } from "../types/app.js";
 import { wrapToolHandler } from "./toolUtils.js";
 
 export function registerTimelineTools(server: McpServer, services: AppServices): void {
+  const log = (toolName: string) => ({ services, toolName });
+
   server.registerTool(
     "add_timeline_event",
     {
@@ -19,7 +21,10 @@ export function registerTimelineTools(server: McpServer, services: AppServices):
         impact: z.string().optional()
       }
     },
-    wrapToolHandler((args) => services.timelineService.addTimelineEvent(args))
+    wrapToolHandler(
+      (args) => services.timelineService.addTimelineEvent(args),
+      log("add_timeline_event"),
+    )
   );
 
   server.registerTool(

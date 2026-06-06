@@ -16,6 +16,8 @@ const getChapterSchema = z
   });
 
 export function registerChapterTools(server: McpServer, services: AppServices): void {
+  const log = (toolName: string) => ({ services, toolName });
+
   server.registerTool(
     "save_chapter",
     {
@@ -33,7 +35,7 @@ export function registerChapterTools(server: McpServer, services: AppServices): 
         status: z.string().optional()
       }
     },
-    wrapToolHandler((args) => services.chapterService.saveChapter(args))
+    wrapToolHandler((args) => services.chapterService.saveChapter(args), log("save_chapter"))
   );
 
   server.registerTool(
@@ -97,6 +99,9 @@ export function registerChapterTools(server: McpServer, services: AppServices): 
         summary: z.string().min(1)
       }
     },
-    wrapToolHandler((args) => services.chapterService.updateChapterSummary(args))
+    wrapToolHandler(
+      (args) => services.chapterService.updateChapterSummary(args),
+      log("update_chapter_summary"),
+    )
   );
 }

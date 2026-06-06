@@ -3,6 +3,8 @@ import type { ChapterPipelineService } from "../services/chapterPipelineService.
 import type { CharacterService } from "../services/characterService.js";
 import type { ContinuityService } from "../services/continuityService.js";
 import type { ForeshadowingService } from "../services/foreshadowingService.js";
+import type { LearningMemoryService } from "../services/learningMemoryService.js";
+import type { McpCallLogService } from "../services/mcpCallLogService.js";
 import type { OutlineService } from "../services/outlineService.js";
 import type { ProjectService } from "../services/projectService.js";
 import type { ProjectSnapshotService } from "../services/projectSnapshotService.js";
@@ -23,6 +25,8 @@ export interface AppServices {
   foreshadowingService: ForeshadowingService;
   timelineService: TimelineService;
   searchService: SearchService;
+  learningMemoryService: LearningMemoryService;
+  mcpCallLogService: McpCallLogService;
   continuityService: ContinuityService;
   writingContextService: WritingContextService;
   chapterPipelineService: ChapterPipelineService;
