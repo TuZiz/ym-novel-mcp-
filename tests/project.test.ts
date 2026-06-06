@@ -25,7 +25,17 @@ describe("project service", () => {
     expect(project.name).toBe("长夜余烬");
     expect(project.currentWords).toBe(0);
     expect(app.services.projectService.listProjects()).toHaveLength(1);
-    expect(app.services.projectService.listWritingRules(project.id)).toHaveLength(15);
+    const rules = app.services.projectService.listWritingRules(project.id);
+    expect(rules).toHaveLength(21);
+    expect(rules.map((rule) => rule.content)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("build_next_chapter_context"),
+        expect.stringContaining("review_chapter_quality"),
+        expect.stringContaining("save_chapter_with_quality_gate"),
+        expect.stringContaining("build_post_chapter_update_prompt"),
+        expect.stringContaining("apply_post_chapter_update"),
+      ]),
+    );
   });
 
   it("adds character and world item to a project", () => {

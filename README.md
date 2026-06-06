@@ -263,6 +263,25 @@ pnpm start
 - `build_post_chapter_update_prompt`
 - `apply_post_chapter_update`
 
+## 默认提示词与 MCP 工具调用规范
+
+本项目的默认提示词体系分为全局 MCP 优先提示词和项目默认写作规则：
+
+- `docs/prompts/global-mcp-prompt.md`
+- `docs/prompts/project-default-prompt.md`
+
+普通写作提示词只能约束风格、语气、节奏和文本质量，不能保证项目状态被读取、检查或持久化。`ym-novel-mcp` 的提示词必须明确约束工具调用：小说项目数据以 MCP 数据库为唯一可信来源；任何项目级创作任务都应先读 MCP，再生成，再检查，再写回 MCP。
+
+默认章节流水线是：
+
+1. 写正文前调用 `build_next_chapter_context` 获取项目、人物、世界观、伏笔、时间线和写作规则上下文。
+2. 写正文后调用 `review_chapter_quality` 检查字数、场景数、冲突推进、结尾钩子、AI 味和总结化比例。
+3. 质量合格后调用 `save_chapter_with_quality_gate` 保存正文；普通 `save_chapter` 只用于临时草稿、跳过门禁、导入旧章节或测试数据。
+4. 保存后调用 `build_post_chapter_update_prompt` 整理本章新增信息。
+5. 最后调用 `apply_post_chapter_update` 写回章节摘要、人物状态、世界观、伏笔、时间线和 canon facts。
+
+当 MCP 不可用时，只能临时生成文本，不能声称已经保存、写入、更新或导出本地项目。客户端或助手必须明确告知用户当前无法写入 MCP，等 MCP 连接恢复后再执行保存、检查和导出。
+
 ## 长篇创作工程系统
 
 项目现在支持单章字数门禁配置：`chapterWordTarget`、`minChapterWords`、`maxChapterWords`，创建或更新项目时会校验 `minChapterWords <= chapterWordTarget <= maxChapterWords`。`save_chapter` 保持兼容，只做基础保存；`save_chapter_with_quality_gate` 会拦截 `review_chapter_quality` 中 `severity=high` 的问题。短章只可用 `allowShortReason` 绕过 `too_short`，`allowQualityOverrideReason` 不会覆盖短章；总结化替代剧情等严重质量问题需要 `allowQualityOverrideReason` 才能覆盖。`review_chapter_quality` 会返回稳定 JSON，检查字数、场景数、冲突推进、结尾钩子、AI 味表达和总结化比例；`expand_chapter_prompt` 会为过短章节生成扩写提示词，要求保留原剧情并增加场景、对白、动作、心理和冲突。
@@ -570,7 +589,7 @@ skills/ym-novel-mcp
 2. 用 `add_world_item` 记录不可违背的世界规则、地点、势力、战力体系和禁忌。
 3. 用 `add_character` 与 `add_character_relationship` 维护人物状态、地点、能力和关系张力。
 4. 用 `create_volume` 和 `create_chapter_outline` 先搭卷目标与近期章节骨架，不需要一次性规划全书。
-5. 每章推荐流水线：`build_next_chapter_context` → 外部 AI 写正文 → `check_continuity` → `save_chapter` → `build_post_chapter_update_prompt` → 外部 AI 抽取结构化更新 → `apply_post_chapter_update` → `create_project_snapshot`。
+5. 每章推荐流水线：`build_next_chapter_context` → 外部 AI 写正文 → `review_chapter_quality` → `save_chapter_with_quality_gate` → `build_post_chapter_update_prompt` → 外部 AI 抽取结构化更新 → `apply_post_chapter_update` → `create_project_snapshot`。
 6. 抽取结果写回前建议人工确认，尤其是人物战力、位置变化、伏笔回收和 canon facts。
 7. 写下一章前先用 `build_next_chapter_context` 或 `plan_next_chapter` 获取上下文和候选大纲。
 8. 需要找资料时优先用 `search_all` 统一检索，再按来源进入具体工具查看详情。

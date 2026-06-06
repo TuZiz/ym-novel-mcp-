@@ -17,6 +17,12 @@ import {
 import { nowIso } from "../utils/text.js";
 
 const defaultWritingRules = [
+  "小说项目数据以 MCP 数据库为唯一可信来源；任何项目级创作任务必须先读 MCP，再生成，再检查，再写回 MCP。",
+  "写正文前必须调用 build_next_chapter_context 获取项目、人物、世界观、伏笔、时间线和写作规则上下文。",
+  "写正文后必须调用 review_chapter_quality 检查字数、场景数、冲突推进、结尾钩子、AI 味和总结化比例。",
+  "章节质量合格后必须调用 save_chapter_with_quality_gate 保存正文；默认不使用普通 save_chapter。",
+  "保存章节后必须调用 build_post_chapter_update_prompt 整理本章新增信息。",
+  "完成后处理时必须调用 apply_post_chapter_update 写回章节摘要、人物状态、世界观、伏笔、时间线和 canon facts。",
   "小说目标是 500 万到 1000 万字，不要过早完结。",
   "每章必须承接上一章结尾。",
   "每章必须有明确冲突、推进和钩子。",
