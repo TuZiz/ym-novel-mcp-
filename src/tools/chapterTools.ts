@@ -8,14 +8,17 @@ const getChapterSchema = z
   .object({
     projectId: z.string().min(1),
     chapterId: z.string().optional(),
-    chapterIndex: z.number().int().positive().optional()
+    chapterIndex: z.number().int().positive().optional(),
   })
   .refine((value) => Boolean(value.chapterId || value.chapterIndex), {
     message: "chapterId or chapterIndex is required",
-    path: ["chapterId"]
+    path: ["chapterId"],
   });
 
-export function registerChapterTools(server: McpServer, services: AppServices): void {
+export function registerChapterTools(
+  server: McpServer,
+  services: AppServices,
+): void {
   const log = (toolName: string) => ({ services, toolName });
 
   server.registerTool(
@@ -33,10 +36,13 @@ export function registerChapterTools(server: McpServer, services: AppServices): 
         involvedCharacters: z.array(z.string()).optional(),
         involvedWorldItems: z.array(z.string()).optional(),
         status: z.string().optional(),
-        allowShortReason: z.string().optional()
-      }
+        allowShortReason: z.string().optional(),
+      },
     },
-    wrapToolHandler((args) => services.chapterService.saveChapter(args), log("save_chapter"))
+    wrapToolHandler(
+      (args) => services.chapterService.saveChapter(args),
+      log("save_chapter"),
+    ),
   );
 
   server.registerTool(
@@ -54,31 +60,33 @@ export function registerChapterTools(server: McpServer, services: AppServices): 
         involvedCharacters: z.array(z.string()).optional(),
         involvedWorldItems: z.array(z.string()).optional(),
         status: z.string().optional(),
-        allowShortReason: z.string().optional()
-      }
+        allowShortReason: z.string().optional(),
+        allowQualityOverrideReason: z.string().optional(),
+      },
     },
     wrapToolHandler(
-      (args) => services.chapterService.saveChapter(args),
+      (args) => services.chapterService.saveChapterWithQualityGate(args),
       log("save_chapter_with_quality_gate"),
-    )
+    ),
   );
 
   server.registerTool(
     "review_chapter_quality",
     {
-      description: "检查章节字数、场景数、冲突推进、结尾钩子、AI味表达和总结化比例。",
+      description:
+        "检查章节字数、场景数、冲突推进、结尾钩子、AI味表达和总结化比例。",
       inputSchema: {
         projectId: z.string().min(1),
         chapterIndex: z.number().int().positive().optional(),
         title: z.string().optional(),
         content: z.string().min(1),
-        hook: z.string().optional()
-      }
+        hook: z.string().optional(),
+      },
     },
     wrapToolHandler(
       (args) => services.chapterService.reviewChapterQuality(args),
       log("review_chapter_quality"),
-    )
+    ),
   );
 
   server.registerTool(
@@ -90,20 +98,20 @@ export function registerChapterTools(server: McpServer, services: AppServices): 
         chapterIndex: z.number().int().positive().optional(),
         title: z.string().optional(),
         content: z.string().min(1),
-        currentIssues: z.array(z.string()).optional()
-      }
+        currentIssues: z.array(z.string()).optional(),
+      },
     },
     wrapToolHandler(
       (args) => services.chapterService.expandChapterPrompt(args),
       log("expand_chapter_prompt"),
-    )
+    ),
   );
 
   server.registerTool(
     "get_chapter",
     {
       description: "获取章节。",
-      inputSchema: getChapterSchema
+      inputSchema: getChapterSchema,
     },
     wrapToolHandler(({ projectId, chapterId, chapterIndex }) => {
       if (chapterId) {
@@ -112,13 +120,13 @@ export function registerChapterTools(server: McpServer, services: AppServices): 
 
       const chapter = services.chapterService.getChapterByIndex(
         projectId,
-        chapterIndex as number
+        chapterIndex as number,
       );
       if (!chapter) {
         throw new AppError(`Chapter ${chapterIndex} not found.`, "NOT_FOUND");
       }
       return chapter;
-    })
+    }),
   );
 
   server.registerTool(
@@ -129,10 +137,10 @@ export function registerChapterTools(server: McpServer, services: AppServices): 
         projectId: z.string().min(1),
         beforeChapterIndex: z.number().int().positive().optional(),
         limit: z.number().int().positive().max(50).optional(),
-        includeContent: z.boolean().optional()
-      }
+        includeContent: z.boolean().optional(),
+      },
     },
-    wrapToolHandler((args) => services.chapterService.getRecentChapters(args))
+    wrapToolHandler((args) => services.chapterService.getRecentChapters(args)),
   );
 
   server.registerTool(
@@ -142,12 +150,12 @@ export function registerChapterTools(server: McpServer, services: AppServices): 
       inputSchema: {
         projectId: z.string().min(1),
         query: z.string(),
-        limit: z.number().int().positive().max(50).optional()
-      }
+        limit: z.number().int().positive().max(50).optional(),
+      },
     },
     wrapToolHandler(({ projectId, query, limit }) =>
-      services.chapterService.searchChapters(projectId, query, limit)
-    )
+      services.chapterService.searchChapters(projectId, query, limit),
+    ),
   );
 
   server.registerTool(
@@ -157,12 +165,12 @@ export function registerChapterTools(server: McpServer, services: AppServices): 
       inputSchema: {
         projectId: z.string().min(1),
         chapterId: z.string().min(1),
-        summary: z.string().min(1)
-      }
+        summary: z.string().min(1),
+      },
     },
     wrapToolHandler(
       (args) => services.chapterService.updateChapterSummary(args),
       log("update_chapter_summary"),
-    )
+    ),
   );
 }

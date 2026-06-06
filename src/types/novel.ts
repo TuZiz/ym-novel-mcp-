@@ -762,6 +762,7 @@ export interface SaveChapterInput {
   involvedWorldItems?: string[];
   status?: string;
   allowShortReason?: string;
+  allowQualityOverrideReason?: string;
 }
 
 export interface GetRecentChaptersInput {
@@ -861,7 +862,7 @@ export interface ApplyProjectBibleInput extends ProjectBibleInput {
   projectId: string;
 }
 
-export interface UpdateProjectBibleInput extends ApplyProjectBibleInput {}
+export type UpdateProjectBibleInput = ApplyProjectBibleInput;
 
 export interface GenerateProjectBiblePromptInput {
   projectId: string;
@@ -943,10 +944,13 @@ export interface ReviewCharacterNameInput {
   name: string;
   genre?: string;
   style?: string;
+  suppressSuggestions?: boolean;
 }
 
-export interface ReplaceCharacterNameInput extends ReviewCharacterNameInput {
+export interface ReplaceCharacterNameInput {
   projectId: string;
   characterId: string;
+  genre?: string;
+  style?: string;
   newName?: string;
 }

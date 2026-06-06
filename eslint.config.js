@@ -4,7 +4,13 @@ import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**", "data/**", "backups/**"],
+    ignores: [
+      "dist/**",
+      "release/**",
+      "node_modules/**",
+      "data/**",
+      "backups/**",
+    ],
   },
   eslint.configs.recommended,
   {

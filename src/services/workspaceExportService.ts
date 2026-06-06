@@ -34,7 +34,12 @@ export class WorkspaceExportService {
       mkdirSync(join(rootDir, dir), { recursive: true });
     }
 
-    write(files, rootDir, "bible/project-bible.md", markdownRecord("项目圣经", bible ?? data.project));
+    write(
+      files,
+      rootDir,
+      "bible/project-bible.md",
+      markdownRecord("项目圣经", bible ?? data.project),
+    );
     write(files, rootDir, "bible/style-guide.md", buildStyleGuide(data));
 
     for (const character of data.characters) {
@@ -69,7 +74,14 @@ export class WorkspaceExportService {
         files,
         rootDir,
         `chapters/${pad(chapter.chapterIndex)}-${safeFileName(chapter.title)}.md`,
-        [`# ${chapter.title}`, "", `- 字数: ${chapter.wordCount}`, `- 钩子: ${chapter.hook ?? ""}`, "", chapter.content].join("\n"),
+        [
+          `# ${chapter.title}`,
+          "",
+          `- 字数: ${chapter.wordCount}`,
+          `- 钩子: ${chapter.hook ?? ""}`,
+          "",
+          chapter.content,
+        ].join("\n"),
       );
     }
 
@@ -85,17 +97,31 @@ export class WorkspaceExportService {
   }
 }
 
-function write(files: string[], rootDir: string, relativePath: string, content: string): void {
+function write(
+  files: string[],
+  rootDir: string,
+  relativePath: string,
+  content: string,
+): void {
   const absolutePath = join(rootDir, relativePath);
   writeFileSync(absolutePath, content, "utf8");
   files.push(absolutePath);
 }
 
 function markdownRecord(title: string, value: unknown): string {
-  return [`# ${title}`, "", "```json", JSON.stringify(value, null, 2), "```", ""].join("\n");
+  return [
+    `# ${title}`,
+    "",
+    "```json",
+    JSON.stringify(value, null, 2),
+    "```",
+    "",
+  ].join("\n");
 }
 
-function buildStyleGuide(data: ReturnType<ProjectTransferService["exportProject"]>): string {
+function buildStyleGuide(
+  data: ReturnType<ProjectTransferService["exportProject"]>,
+): string {
   return [
     `# ${data.project.name} 风格指南`,
     "",
@@ -112,7 +138,9 @@ function buildStyleGuide(data: ReturnType<ProjectTransferService["exportProject"
   ].join("\n");
 }
 
-function buildReport(data: ReturnType<ProjectTransferService["exportProject"]>): string {
+function buildReport(
+  data: ReturnType<ProjectTransferService["exportProject"]>,
+): string {
   return [
     `# ${data.project.name} 工程报告`,
     "",
@@ -132,6 +160,7 @@ function buildReport(data: ReturnType<ProjectTransferService["exportProject"]>):
 }
 
 function safeFileName(value: string): string {
+  // eslint-disable-next-line no-control-regex
   const sanitized = value.replace(/[<>:"/\\|?*\u0000-\u001F]/gu, "_").trim();
   return sanitized || "untitled";
 }

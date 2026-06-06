@@ -37,20 +37,6 @@ export class ChapterService {
       this.outlineService.getVolume(input.projectId, input.volumeId);
     }
 
-    const review = this.reviewChapterQuality({
-      projectId: input.projectId,
-      chapterIndex: input.chapterIndex,
-      title: input.title,
-      content: input.content,
-      hook: input.hook,
-    });
-    if (review.allowShortReasonRequired && !input.allowShortReason?.trim()) {
-      throw new AppError(
-        `Chapter has ${review.wordCount} words, below minChapterWords ${review.minChapterWords}. Provide allowShortReason to save intentionally short chapters.`,
-        "QUALITY_GATE_FAILED",
-      );
-    }
-
     const existing = this.db
       .prepare(
         "SELECT id, created_at FROM chapters WHERE project_id = ? AND chapter_index = ?",
@@ -186,6 +172,40 @@ export class ChapterService {
     transaction();
     this.projectService.refreshProjectWordCount(input.projectId);
     return this.getChapter(input.projectId, chapterId);
+  }
+
+  saveChapterWithQualityGate(input: SaveChapterInput): Chapter {
+    const review = this.reviewChapterQuality({
+      projectId: input.projectId,
+      chapterIndex: input.chapterIndex,
+      title: input.title,
+      content: input.content,
+      hook: input.hook,
+    });
+    const allowShort = Boolean(input.allowShortReason?.trim());
+    const allowQualityOverride = Boolean(
+      input.allowQualityOverrideReason?.trim(),
+    );
+    const blockingIssues = review.issues.filter((issue) => {
+      if (issue.severity !== "high") {
+        return false;
+      }
+      if (allowQualityOverride) {
+        return false;
+      }
+      return !(issue.type === "too_short" && allowShort);
+    });
+
+    if (blockingIssues.length > 0) {
+      throw new AppError(
+        `Chapter quality gate failed: ${blockingIssues
+          .map((issue) => `${issue.type}(${issue.severity})`)
+          .join(", ")}.`,
+        "QUALITY_GATE_FAILED",
+      );
+    }
+
+    return this.saveChapter(input);
   }
 
   getChapter(projectId: string, chapterId: string): Chapter {
@@ -437,7 +457,9 @@ export class ChapterService {
 
 function countScenes(content: string): number {
   const explicitScenes = content
-    .split(/\n\s*(?:-{3,}|\*{3,}|#{2,}|第[一二三四五六七八九十\d]+场|场景[一二三四五六七八九十\d]+)\s*\n/u)
+    .split(
+      /\n\s*(?:-{3,}|\*{3,}|#{2,}|第[一二三四五六七八九十\d]+场|场景[一二三四五六七八九十\d]+)\s*\n/u,
+    )
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
   if (explicitScenes.length > 1) {
@@ -452,7 +474,10 @@ function countScenes(content: string): number {
 }
 
 function scoreConflictProgression(content: string): number {
-  const actionHits = countPattern(content, /冲|追|挡|拦|逼|夺|逃|打|问|查|闯|救|杀|争|抢/gu);
+  const actionHits = countPattern(
+    content,
+    /冲|追|挡|拦|逼|夺|逃|打|问|查|闯|救|杀|争|抢/gu,
+  );
   const resistanceHits = countPattern(
     content,
     /但是|然而|偏偏|阻止|代价|威胁|危险|失败|暴露|陷阱|反击|拒绝|怀疑/gu,

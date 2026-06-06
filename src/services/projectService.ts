@@ -38,6 +38,12 @@ export class ProjectService {
   constructor(private readonly db: Database.Database) {}
 
   createProject(input: CreateProjectInput): Project {
+    validateChapterWordConfig({
+      chapterWordTarget: input.chapterWordTarget ?? null,
+      minChapterWords: input.minChapterWords ?? null,
+      maxChapterWords: input.maxChapterWords ?? null,
+    });
+
     const now = nowIso();
     const id = createId("project");
 
@@ -119,6 +125,24 @@ export class ProjectService {
 
   updateProject(projectId: string, patch: UpdateProjectInput): Project {
     const current = this.getProject(projectId);
+    const nextChapterWordTarget = patchValue(
+      patch.chapterWordTarget,
+      current.chapterWordTarget,
+    );
+    const nextMinChapterWords = patchValue(
+      patch.minChapterWords,
+      current.minChapterWords,
+    );
+    const nextMaxChapterWords = patchValue(
+      patch.maxChapterWords,
+      current.maxChapterWords,
+    );
+    validateChapterWordConfig({
+      chapterWordTarget: nextChapterWordTarget,
+      minChapterWords: nextMinChapterWords,
+      maxChapterWords: nextMaxChapterWords,
+    });
+
     const updatedAt = nowIso();
 
     this.db
@@ -134,9 +158,9 @@ export class ProjectService {
         patchValue(patch.genre, current.genre),
         patchValue(patch.platform, current.platform),
         patchValue(patch.targetWords, current.targetWords),
-        patchValue(patch.chapterWordTarget, current.chapterWordTarget),
-        patchValue(patch.minChapterWords, current.minChapterWords),
-        patchValue(patch.maxChapterWords, current.maxChapterWords),
+        nextChapterWordTarget,
+        nextMinChapterWords,
+        nextMaxChapterWords,
         patchValue(patch.currentWords, current.currentWords),
         patchValue(patch.style, current.style),
         patchValue(patch.status, current.status),
@@ -195,5 +219,43 @@ export class ProjectService {
     if (!exists) {
       throw new AppError(`Project ${projectId} not found.`, "NOT_FOUND");
     }
+  }
+}
+
+function validateChapterWordConfig(config: {
+  chapterWordTarget: number | null;
+  minChapterWords: number | null;
+  maxChapterWords: number | null;
+}): void {
+  const { chapterWordTarget, minChapterWords, maxChapterWords } = config;
+  if (
+    minChapterWords !== null &&
+    chapterWordTarget !== null &&
+    minChapterWords > chapterWordTarget
+  ) {
+    throw new AppError(
+      "minChapterWords must be less than or equal to chapterWordTarget.",
+      "INVALID_CHAPTER_WORD_CONFIG",
+    );
+  }
+  if (
+    chapterWordTarget !== null &&
+    maxChapterWords !== null &&
+    chapterWordTarget > maxChapterWords
+  ) {
+    throw new AppError(
+      "chapterWordTarget must be less than or equal to maxChapterWords.",
+      "INVALID_CHAPTER_WORD_CONFIG",
+    );
+  }
+  if (
+    minChapterWords !== null &&
+    maxChapterWords !== null &&
+    minChapterWords > maxChapterWords
+  ) {
+    throw new AppError(
+      "minChapterWords must be less than or equal to maxChapterWords.",
+      "INVALID_CHAPTER_WORD_CONFIG",
+    );
   }
 }

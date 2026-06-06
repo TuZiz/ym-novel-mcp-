@@ -3,7 +3,10 @@ import * as z from "zod/v4";
 import type { AppServices } from "../types/app.js";
 import { wrapToolHandler } from "./toolUtils.js";
 
-export function registerCharacterTools(server: McpServer, services: AppServices): void {
+export function registerCharacterTools(
+  server: McpServer,
+  services: AppServices,
+): void {
   const log = (toolName: string) => ({ services, toolName });
 
   server.registerTool(
@@ -31,10 +34,13 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         moralCode: z.string().optional(),
         relationshipGoal: z.string().optional(),
         growthStage: z.string().optional(),
-        firstScenePlan: z.string().optional()
-      }
+        firstScenePlan: z.string().optional(),
+      },
     },
-    wrapToolHandler((args) => services.characterService.addCharacter(args), log("add_character"))
+    wrapToolHandler(
+      (args) => services.characterService.addCharacter(args),
+      log("add_character"),
+    ),
   );
 
   const characterBiblePatchSchema = z.object({
@@ -58,7 +64,7 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
     moralCode: z.string().optional(),
     relationshipGoal: z.string().optional(),
     growthStage: z.string().optional(),
-    firstScenePlan: z.string().optional()
+    firstScenePlan: z.string().optional(),
   });
 
   server.registerTool(
@@ -67,14 +73,17 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
       description: "生成人物圣经提示词。",
       inputSchema: {
         projectId: z.string().min(1),
-        characterIds: z.array(z.string()).optional()
-      }
+        characterIds: z.array(z.string()).optional(),
+      },
     },
     wrapToolHandler(
       ({ projectId, characterIds }) =>
-        services.characterService.generateCharacterBiblesPrompt(projectId, characterIds),
+        services.characterService.generateCharacterBiblesPrompt(
+          projectId,
+          characterIds,
+        ),
       log("generate_character_bibles_prompt"),
-    )
+    ),
   );
 
   server.registerTool(
@@ -83,13 +92,13 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
       description: "批量写入或更新人物圣经。",
       inputSchema: {
         projectId: z.string().min(1),
-        characters: z.array(characterBiblePatchSchema).min(1)
-      }
+        characters: z.array(characterBiblePatchSchema).min(1),
+      },
     },
     wrapToolHandler(
       (args) => services.characterService.applyCharacterBibles(args),
       log("apply_character_bibles"),
-    )
+    ),
   );
 
   server.registerTool(
@@ -104,10 +113,13 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         givenNamePool: z.array(z.string()).optional(),
         bannedTokens: z.array(z.string()).optional(),
         bannedFullNames: z.array(z.string()).optional(),
-        style: z.string().optional()
-      }
+        style: z.string().optional(),
+      },
     },
-    wrapToolHandler((args) => services.nameService.upsertNameBank(args), log("upsert_name_bank"))
+    wrapToolHandler(
+      (args) => services.nameService.upsertNameBank(args),
+      log("upsert_name_bank"),
+    ),
   );
 
   server.registerTool(
@@ -121,13 +133,13 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         region: z.string().optional(),
         style: z.string().optional(),
         gender: z.string().optional(),
-        count: z.number().int().positive().max(20).optional()
-      }
+        count: z.number().int().positive().max(20).optional(),
+      },
     },
     wrapToolHandler(
       (args) => services.nameService.generateCharacterName(args),
       log("generate_character_name"),
-    )
+    ),
   );
 
   server.registerTool(
@@ -138,13 +150,13 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         projectId: z.string().optional(),
         name: z.string().min(1),
         genre: z.string().optional(),
-        style: z.string().optional()
-      }
+        style: z.string().optional(),
+      },
     },
     wrapToolHandler(
       (args) => services.nameService.reviewCharacterName(args),
       log("review_character_name"),
-    )
+    ),
   );
 
   server.registerTool(
@@ -154,16 +166,15 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
       inputSchema: {
         projectId: z.string().min(1),
         characterId: z.string().min(1),
-        name: z.string().min(1),
         newName: z.string().optional(),
         genre: z.string().optional(),
-        style: z.string().optional()
-      }
+        style: z.string().optional(),
+      },
     },
     wrapToolHandler(
       (args) => services.nameService.replaceCharacterName(args),
       log("replace_character_name"),
-    )
+    ),
   );
 
   server.registerTool(
@@ -172,12 +183,12 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
       description: "获取人物详情。",
       inputSchema: {
         projectId: z.string().min(1),
-        characterId: z.string().min(1)
-      }
+        characterId: z.string().min(1),
+      },
     },
     wrapToolHandler(({ projectId, characterId }) =>
-      services.characterService.getCharacter(projectId, characterId)
-    )
+      services.characterService.getCharacter(projectId, characterId),
+    ),
   );
 
   server.registerTool(
@@ -187,12 +198,12 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
       inputSchema: {
         projectId: z.string().min(1),
         query: z.string(),
-        limit: z.number().int().positive().max(50).optional()
-      }
+        limit: z.number().int().positive().max(50).optional(),
+      },
     },
     wrapToolHandler(({ projectId, query, limit }) =>
-      services.characterService.searchCharacters(projectId, query, limit)
-    )
+      services.characterService.searchCharacters(projectId, query, limit),
+    ),
   );
 
   server.registerTool(
@@ -206,13 +217,13 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         powerLevel: z.string().optional(),
         location: z.string().optional(),
         status: z.string().optional(),
-        lastAppearanceChapter: z.number().int().positive().optional()
-      }
+        lastAppearanceChapter: z.number().int().positive().optional(),
+      },
     },
     wrapToolHandler(
       (args) => services.characterService.updateCharacterState(args),
       log("update_character_state"),
-    )
+    ),
   );
 
   server.registerTool(
@@ -227,13 +238,13 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         description: z.string().optional(),
         currentState: z.string().optional(),
         tensionLevel: z.number().int().min(0).max(10).optional(),
-        updatedChapterId: z.string().optional()
-      }
+        updatedChapterId: z.string().optional(),
+      },
     },
     wrapToolHandler(
       (args) => services.characterService.addCharacterRelationship(args),
       log("add_character_relationship"),
-    )
+    ),
   );
 
   server.registerTool(
@@ -247,12 +258,12 @@ export function registerCharacterTools(server: McpServer, services: AppServices)
         description: z.string().nullable().optional(),
         currentState: z.string().nullable().optional(),
         tensionLevel: z.number().int().min(0).max(10).nullable().optional(),
-        updatedChapterId: z.string().nullable().optional()
-      }
+        updatedChapterId: z.string().nullable().optional(),
+      },
     },
     wrapToolHandler(
       (args) => services.characterService.updateCharacterRelationship(args),
       log("update_character_relationship"),
-    )
+    ),
   );
 }

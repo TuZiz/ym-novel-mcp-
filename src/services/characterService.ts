@@ -122,13 +122,25 @@ export class CharacterService {
         WHERE project_id = ?
           AND (
             name LIKE ? OR aliases LIKE ? OR role LIKE ? OR personality LIKE ? OR
-            motivation LIKE ? OR current_state LIKE ? OR power_level LIKE ? OR location LIKE ?
+            motivation LIKE ? OR current_state LIKE ? OR power_level LIKE ? OR location LIKE ? OR
+            character_arc LIKE ? OR weakness LIKE ? OR secret LIKE ? OR voice LIKE ? OR
+            speech_habits LIKE ? OR moral_code LIKE ? OR relationship_goal LIKE ? OR
+            growth_stage LIKE ? OR first_scene_plan LIKE ?
           )
         ORDER BY updated_at DESC
         LIMIT ?`,
       )
       .all(
         projectId,
+        like,
+        like,
+        like,
+        like,
+        like,
+        like,
+        like,
+        like,
+        like,
         like,
         like,
         like,
@@ -241,7 +253,10 @@ export class CharacterService {
     return apply();
   }
 
-  generateCharacterBiblesPrompt(projectId: string, characterIds?: string[]): string {
+  generateCharacterBiblesPrompt(
+    projectId: string,
+    characterIds?: string[],
+  ): string {
     const characters = characterIds?.length
       ? characterIds.map((id) => this.getCharacter(projectId, id))
       : this.listCharacters(projectId);

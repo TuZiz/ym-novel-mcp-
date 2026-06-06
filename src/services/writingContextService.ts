@@ -116,7 +116,7 @@ export class WritingContextService {
       "请避免 learningContext 中记录过的错误写法。",
       "如果 learningContext 与普通上下文冲突，以 canon facts 和用户明确确认的经验为准。",
       "本章需要推进当前冲突，并在结尾保留明确钩子。",
-      "不要用总结代替剧情，不要输出解释，只输出可直接写正文的中文创作提示。",
+      "不要用总结代替剧情，不要输出大纲、分析、解释、提示词或 JSON，只输出小说正文。",
       learningContext.instruction,
       chapterOutline
         ? `当前章节大纲：标题《${chapterOutline.title}》；目标=${chapterOutline.goal ?? "未填写"}；冲突=${chapterOutline.conflict ?? "未填写"}。`

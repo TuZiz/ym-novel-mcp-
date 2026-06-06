@@ -108,18 +108,24 @@ export class NameService {
 
     const now = nowIso();
     const existing = this.findNameBank(input);
-    const surnamePool = uniqueStrings(input.surnamePool ?? []);
-    const givenNamePool = uniqueStrings(input.givenNamePool ?? []);
-    const bannedTokens = uniqueStrings([
-      ...defaultBannedTokens,
-      ...(input.bannedTokens ?? []),
-    ]);
-    const bannedFullNames = uniqueStrings([
-      ...defaultBannedFullNames,
-      ...(input.bannedFullNames ?? []),
-    ]);
 
     if (existing) {
+      const surnamePool =
+        input.surnamePool === undefined
+          ? existing.surnamePool
+          : uniqueStrings(input.surnamePool);
+      const givenNamePool =
+        input.givenNamePool === undefined
+          ? existing.givenNamePool
+          : uniqueStrings(input.givenNamePool);
+      const bannedTokens =
+        input.bannedTokens === undefined
+          ? existing.bannedTokens
+          : uniqueStrings(input.bannedTokens);
+      const bannedFullNames =
+        input.bannedFullNames === undefined
+          ? existing.bannedFullNames
+          : uniqueStrings(input.bannedFullNames);
       this.db
         .prepare(
           `UPDATE name_bank
@@ -138,6 +144,17 @@ export class NameService {
         );
       return this.getNameBank(existing.id);
     }
+
+    const surnamePool = uniqueStrings(input.surnamePool ?? []);
+    const givenNamePool = uniqueStrings(input.givenNamePool ?? []);
+    const bannedTokens = uniqueStrings([
+      ...defaultBannedTokens,
+      ...(input.bannedTokens ?? []),
+    ]);
+    const bannedFullNames = uniqueStrings([
+      ...defaultBannedFullNames,
+      ...(input.bannedFullNames ?? []),
+    ]);
 
     const id = createId("namebank");
     this.db
@@ -193,6 +210,7 @@ export class NameService {
           name,
           genre: input.genre,
           style: input.style,
+          suppressSuggestions: true,
         });
         if (review.ok) {
           names.push(name);
@@ -229,19 +247,21 @@ export class NameService {
     const tropeScore = bannedHits.length * 35;
     const lengthScore = input.name.length < 2 || input.name.length > 4 ? 18 : 0;
     const fantasyPenalty =
-      !isFantasy(input.genre ?? input.style) && /[澜砚烬阙朔鸢]/u.test(input.name)
+      !isFantasy(input.genre ?? input.style) &&
+      /[澜砚烬阙朔鸢]/u.test(input.name)
         ? 18
         : 0;
     const aiScore = Math.min(100, tropeScore + lengthScore + fantasyPenalty);
     const ok = aiScore < 35;
-    const suggestions = ok
-      ? []
-      : this.generateCharacterName({
-          projectId: input.projectId,
-          genre: input.genre,
-          style: input.style,
-          count: 3,
-        }).names;
+    const suggestions =
+      ok || input.suppressSuggestions
+        ? []
+        : this.generateCharacterName({
+            projectId: input.projectId,
+            genre: input.genre,
+            style: input.style,
+            count: 3,
+          }).names;
 
     return {
       ok,
@@ -259,8 +279,9 @@ export class NameService {
       input.projectId,
       input.characterId,
     );
+    const requestedName = input.newName?.trim();
     const generated =
-      input.newName ??
+      requestedName ||
       this.generateCharacterName({
         projectId: input.projectId,
         genre: input.genre,
@@ -309,9 +330,9 @@ export class NameService {
   }
 
   private getNameBank(id: string): NameBank {
-    const row = this.db.prepare("SELECT * FROM name_bank WHERE id = ?").get(id) as
-      | Record<string, unknown>
-      | undefined;
+    const row = this.db
+      .prepare("SELECT * FROM name_bank WHERE id = ?")
+      .get(id) as Record<string, unknown> | undefined;
     return mapNameBankRow(assertFound(row, `Name bank ${id} not found.`));
   }
 
