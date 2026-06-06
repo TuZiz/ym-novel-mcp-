@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import type {
   AddCharacterInput,
+  ApplyCharacterBiblePatch,
   AddCharacterRelationshipInput,
   Character,
   CharacterRelationship,
@@ -32,9 +33,11 @@ export class CharacterService {
         .prepare(
           `INSERT INTO characters (
             id, project_id, name, aliases, role, personality, motivation, ability, appearance,
-            relationship_summary, current_state, power_level, location, status,
+            relationship_summary, current_state, power_level, location, character_arc, weakness,
+            secret, voice, speech_habits, moral_code, relationship_goal, growth_stage,
+            first_scene_plan, status,
             first_appearance_chapter, last_appearance_chapter, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NULL, NULL, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NULL, NULL, ?, ?)`,
         )
         .run(
           id,
@@ -50,6 +53,15 @@ export class CharacterService {
           input.currentState ?? null,
           input.powerLevel ?? null,
           input.location ?? null,
+          input.characterArc ?? null,
+          input.weakness ?? null,
+          input.secret ?? null,
+          input.voice ?? null,
+          input.speechHabits ?? null,
+          input.moralCode ?? null,
+          input.relationshipGoal ?? null,
+          input.growthStage ?? null,
+          input.firstScenePlan ?? null,
           now,
           now,
         );
@@ -153,6 +165,93 @@ export class CharacterService {
       );
 
     return this.getCharacter(input.projectId, input.characterId);
+  }
+
+  applyCharacterBible(
+    input: ApplyCharacterBiblePatch & { projectId: string },
+  ): Character {
+    if (input.characterId) {
+      const current = this.getCharacter(input.projectId, input.characterId);
+      const updatedAt = nowIso();
+
+      this.db
+        .prepare(
+          `UPDATE characters
+          SET name = ?, aliases = ?, role = ?, personality = ?, motivation = ?, ability = ?,
+              appearance = ?, relationship_summary = ?, current_state = ?, power_level = ?,
+              location = ?, character_arc = ?, weakness = ?, secret = ?, voice = ?,
+              speech_habits = ?, moral_code = ?, relationship_goal = ?, growth_stage = ?,
+              first_scene_plan = ?, updated_at = ?
+          WHERE id = ? AND project_id = ?`,
+        )
+        .run(
+          input.name ?? current.name,
+          serializeStringArray(uniqueStrings(input.aliases ?? current.aliases)),
+          input.role ?? current.role,
+          input.personality ?? current.personality,
+          input.motivation ?? current.motivation,
+          input.ability ?? current.ability,
+          input.appearance ?? current.appearance,
+          input.relationshipSummary ?? current.relationshipSummary,
+          input.currentState ?? current.currentState,
+          input.powerLevel ?? current.powerLevel,
+          input.location ?? current.location,
+          input.characterArc ?? current.characterArc,
+          input.weakness ?? current.weakness,
+          input.secret ?? current.secret,
+          input.voice ?? current.voice,
+          input.speechHabits ?? current.speechHabits,
+          input.moralCode ?? current.moralCode,
+          input.relationshipGoal ?? current.relationshipGoal,
+          input.growthStage ?? current.growthStage,
+          input.firstScenePlan ?? current.firstScenePlan,
+          updatedAt,
+          input.characterId,
+          input.projectId,
+        );
+
+      return this.getCharacter(input.projectId, input.characterId);
+    }
+
+    if (!input.name?.trim()) {
+      throw new Error("name is required when creating a character bible.");
+    }
+
+    return this.addCharacter({
+      ...input,
+      name: input.name,
+      projectId: input.projectId,
+    });
+  }
+
+  applyCharacterBibles(input: {
+    projectId: string;
+    characters: ApplyCharacterBiblePatch[];
+  }): Character[] {
+    this.projectService.ensureProjectExists(input.projectId);
+    const apply = this.db.transaction(() =>
+      input.characters.map((character) =>
+        this.applyCharacterBible({
+          ...character,
+          projectId: input.projectId,
+        }),
+      ),
+    );
+
+    return apply();
+  }
+
+  generateCharacterBiblesPrompt(projectId: string, characterIds?: string[]): string {
+    const characters = characterIds?.length
+      ? characterIds.map((id) => this.getCharacter(projectId, id))
+      : this.listCharacters(projectId);
+
+    return [
+      "请为以下人物生成可直接写入本地 SQLite 的人物圣经 JSON。",
+      "只输出 JSON，不要解释。每个人物必须包含 name，并尽量补齐 characterArc、weakness、secret、voice、speechHabits、moralCode、relationshipGoal、growthStage、firstScenePlan。",
+      "人物弧光要能服务长篇连载：初始缺陷、阶段变化、关系压力、第一次登场场景都要具体，避免空泛标签。",
+      JSON.stringify({ projectId, characters }, null, 2),
+    ].join("\n\n");
   }
 
   addCharacterRelationship(

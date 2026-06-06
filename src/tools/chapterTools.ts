@@ -32,10 +32,71 @@ export function registerChapterTools(server: McpServer, services: AppServices): 
         hook: z.string().optional(),
         involvedCharacters: z.array(z.string()).optional(),
         involvedWorldItems: z.array(z.string()).optional(),
-        status: z.string().optional()
+        status: z.string().optional(),
+        allowShortReason: z.string().optional()
       }
     },
     wrapToolHandler((args) => services.chapterService.saveChapter(args), log("save_chapter"))
+  );
+
+  server.registerTool(
+    "save_chapter_with_quality_gate",
+    {
+      description: "保存章节，并启用章节质量门禁。",
+      inputSchema: {
+        projectId: z.string().min(1),
+        volumeId: z.string().optional(),
+        chapterIndex: z.number().int().positive(),
+        title: z.string().min(1),
+        content: z.string().min(1),
+        summary: z.string().optional(),
+        hook: z.string().optional(),
+        involvedCharacters: z.array(z.string()).optional(),
+        involvedWorldItems: z.array(z.string()).optional(),
+        status: z.string().optional(),
+        allowShortReason: z.string().optional()
+      }
+    },
+    wrapToolHandler(
+      (args) => services.chapterService.saveChapter(args),
+      log("save_chapter_with_quality_gate"),
+    )
+  );
+
+  server.registerTool(
+    "review_chapter_quality",
+    {
+      description: "检查章节字数、场景数、冲突推进、结尾钩子、AI味表达和总结化比例。",
+      inputSchema: {
+        projectId: z.string().min(1),
+        chapterIndex: z.number().int().positive().optional(),
+        title: z.string().optional(),
+        content: z.string().min(1),
+        hook: z.string().optional()
+      }
+    },
+    wrapToolHandler(
+      (args) => services.chapterService.reviewChapterQuality(args),
+      log("review_chapter_quality"),
+    )
+  );
+
+  server.registerTool(
+    "expand_chapter_prompt",
+    {
+      description: "当章节过短时，生成扩写提示词。",
+      inputSchema: {
+        projectId: z.string().min(1),
+        chapterIndex: z.number().int().positive().optional(),
+        title: z.string().optional(),
+        content: z.string().min(1),
+        currentIssues: z.array(z.string()).optional()
+      }
+    },
+    wrapToolHandler(
+      (args) => services.chapterService.expandChapterPrompt(args),
+      log("expand_chapter_prompt"),
+    )
   );
 
   server.registerTool(

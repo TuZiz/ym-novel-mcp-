@@ -8,6 +8,7 @@ import type {
   FeedbackEvent,
   Foreshadowing,
   Project,
+  ProjectBible,
   ProjectSnapshot,
   ProjectSnapshotSummary,
   TimelineEvent,
@@ -15,6 +16,7 @@ import type {
   WorkflowRun,
   WorldItem,
   WritingRule,
+  NameBank,
 } from "../types/novel.js";
 import { parseStringArray } from "./text.js";
 
@@ -35,6 +37,9 @@ export function mapProjectRow(row: Row): Project {
     genre: (row.genre as string | null) ?? null,
     platform: (row.platform as string | null) ?? null,
     targetWords: (row.target_words as number | null) ?? null,
+    chapterWordTarget: (row.chapter_word_target as number | null) ?? null,
+    minChapterWords: (row.min_chapter_words as number | null) ?? null,
+    maxChapterWords: (row.max_chapter_words as number | null) ?? null,
     currentWords: Number(row.current_words ?? 0),
     style: (row.style as string | null) ?? null,
     status: String(row.status),
@@ -68,11 +73,53 @@ export function mapCharacterRow(row: Row): Character {
     currentState: (row.current_state as string | null) ?? null,
     powerLevel: (row.power_level as string | null) ?? null,
     location: (row.location as string | null) ?? null,
+    characterArc: (row.character_arc as string | null) ?? null,
+    weakness: (row.weakness as string | null) ?? null,
+    secret: (row.secret as string | null) ?? null,
+    voice: (row.voice as string | null) ?? null,
+    speechHabits: (row.speech_habits as string | null) ?? null,
+    moralCode: (row.moral_code as string | null) ?? null,
+    relationshipGoal: (row.relationship_goal as string | null) ?? null,
+    growthStage: (row.growth_stage as string | null) ?? null,
+    firstScenePlan: (row.first_scene_plan as string | null) ?? null,
     status: String(row.status),
     firstAppearanceChapter:
       (row.first_appearance_chapter as number | null) ?? null,
     lastAppearanceChapter:
       (row.last_appearance_chapter as number | null) ?? null,
+  };
+}
+
+export function mapProjectBibleRow(row: Row): ProjectBible {
+  return {
+    projectId: String(row.project_id),
+    premise: (row.premise as string | null) ?? null,
+    logline: (row.logline as string | null) ?? null,
+    coreHook: (row.core_hook as string | null) ?? null,
+    targetReader: (row.target_reader as string | null) ?? null,
+    genreFormula: (row.genre_formula as string | null) ?? null,
+    pov: (row.pov as string | null) ?? null,
+    tone: (row.tone as string | null) ?? null,
+    taboo: (row.taboo as string | null) ?? null,
+    endingDirection: (row.ending_direction as string | null) ?? null,
+    longTermConflict: (row.long_term_conflict as string | null) ?? null,
+    chapterWordTarget: (row.chapter_word_target as number | null) ?? null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+export function mapNameBankRow(row: Row): NameBank {
+  return {
+    ...mapBaseRow(row),
+    projectId: (row.project_id as string | null) ?? null,
+    era: (row.era as string | null) ?? null,
+    region: (row.region as string | null) ?? null,
+    surnamePool: parseStringArray(row.surname_pool),
+    givenNamePool: parseStringArray(row.given_name_pool),
+    bannedTokens: parseStringArray(row.banned_tokens),
+    bannedFullNames: parseStringArray(row.banned_full_names),
+    style: (row.style as string | null) ?? null,
   };
 }
 

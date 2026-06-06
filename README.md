@@ -187,6 +187,11 @@ pnpm start
 - `update_project`
 - `export_project`
 - `import_project`
+- `generate_project_bible_prompt`
+- `apply_project_bible`
+- `get_project_bible`
+- `update_project_bible`
+- `export_workspace_files`
 - `create_project_snapshot`
 - `list_project_snapshots`
 - `get_project_snapshot`
@@ -203,6 +208,12 @@ pnpm start
 - `get_character`
 - `search_characters`
 - `update_character_state`
+- `generate_character_bibles_prompt`
+- `apply_character_bibles`
+- `upsert_name_bank`
+- `generate_character_name`
+- `review_character_name`
+- `replace_character_name`
 - `add_character_relationship`
 - `update_character_relationship`
 
@@ -219,6 +230,9 @@ pnpm start
 章节：
 
 - `save_chapter`
+- `save_chapter_with_quality_gate`
+- `review_chapter_quality`
+- `expand_chapter_prompt`
 - `get_chapter`
 - `get_recent_chapters`
 - `search_chapters`
@@ -248,6 +262,18 @@ pnpm start
 - `plan_next_chapter`
 - `build_post_chapter_update_prompt`
 - `apply_post_chapter_update`
+
+## 长篇创作工程系统
+
+项目现在支持单章字数门禁配置：`chapterWordTarget`、`minChapterWords`、`maxChapterWords`。`save_chapter` 与 `save_chapter_with_quality_gate` 会在配置了 `minChapterWords` 时拒绝保存过短章节；确实需要短章时传入 `allowShortReason`。`review_chapter_quality` 会返回稳定 JSON，检查字数、场景数、冲突推进、结尾钩子、AI 味表达和总结化比例；`expand_chapter_prompt` 会为过短章节生成扩写提示词，要求保留原剧情并增加场景、对白、动作、心理和冲突。
+
+项目圣经通过 `project_bibles` 保存，字段包括 `premise`、`logline`、`coreHook`、`targetReader`、`genreFormula`、`pov`、`tone`、`taboo`、`endingDirection`、`longTermConflict`、`chapterWordTarget`。使用 `generate_project_bible_prompt` 生成外部模型提示词，再用 `apply_project_bible`、`get_project_bible`、`update_project_bible` 写入和维护。
+
+人物资料增加 `characterArc`、`weakness`、`secret`、`voice`、`speechHabits`、`moralCode`、`relationshipGoal`、`growthStage`、`firstScenePlan`。`generate_character_bibles_prompt` 生成批量人物圣经提示词，`apply_character_bibles` 可新增或更新人物，并会写入 SQLite。
+
+姓名系统通过 `name_bank` 保存 `era`、`region`、`surnamePool`、`givenNamePool`、`bannedTokens`、`bannedFullNames`、`style`。默认禁用高 AI 味姓名 `叶辰`、`林枫`、`苏尘`、`萧凡`、`凌天`、`楚天`、`顾寒`、`秦渊`，以及 `辰`、`尘`、`天`、`凡`、`夜`、`渊`、`霆`、`宸`、`玄`、`帝` 等高频网文感字。`generate_character_name` 优先生成生活化姓名，`review_character_name` 返回 `aiScore`、`reason`、`suggestions`，`replace_character_name` 会替换人物姓名并把旧名写入 aliases。
+
+`export_workspace_files` 会把项目导出为 Markdown/JSON 工程目录，包含 `bible/project-bible.md`、`bible/style-guide.md`、`characters/*.md`、`world/*.md`、`outlines/*.md`、`chapters/*.md`、`reports/*.md`。原有 `export_project` / `import_project` 继续保持结构化 JSON 迁移能力，并兼容旧导出数据。
 
 经验记忆：
 

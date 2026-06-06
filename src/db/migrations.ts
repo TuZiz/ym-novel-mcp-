@@ -96,6 +96,54 @@ const migrations = [
       `CREATE INDEX IF NOT EXISTS idx_mcp_call_logs_project_created ON mcp_call_logs(project_id, created_at DESC)`,
     ],
   },
+  {
+    version: 5,
+    name: "creative-engine-schema",
+    statements: [
+      `ALTER TABLE projects ADD COLUMN chapter_word_target INTEGER`,
+      `ALTER TABLE projects ADD COLUMN min_chapter_words INTEGER`,
+      `ALTER TABLE projects ADD COLUMN max_chapter_words INTEGER`,
+      `ALTER TABLE characters ADD COLUMN character_arc TEXT`,
+      `ALTER TABLE characters ADD COLUMN weakness TEXT`,
+      `ALTER TABLE characters ADD COLUMN secret TEXT`,
+      `ALTER TABLE characters ADD COLUMN voice TEXT`,
+      `ALTER TABLE characters ADD COLUMN speech_habits TEXT`,
+      `ALTER TABLE characters ADD COLUMN moral_code TEXT`,
+      `ALTER TABLE characters ADD COLUMN relationship_goal TEXT`,
+      `ALTER TABLE characters ADD COLUMN growth_stage TEXT`,
+      `ALTER TABLE characters ADD COLUMN first_scene_plan TEXT`,
+      `CREATE TABLE IF NOT EXISTS project_bibles (
+        project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        premise TEXT,
+        logline TEXT,
+        core_hook TEXT,
+        target_reader TEXT,
+        genre_formula TEXT,
+        pov TEXT,
+        tone TEXT,
+        taboo TEXT,
+        ending_direction TEXT,
+        long_term_conflict TEXT,
+        chapter_word_target INTEGER,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS name_bank (
+        id TEXT PRIMARY KEY,
+        project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+        era TEXT,
+        region TEXT,
+        surname_pool TEXT NOT NULL DEFAULT '[]',
+        given_name_pool TEXT NOT NULL DEFAULT '[]',
+        banned_tokens TEXT NOT NULL DEFAULT '[]',
+        banned_full_names TEXT NOT NULL DEFAULT '[]',
+        style TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_name_bank_project ON name_bank(project_id, era, region, style)`,
+    ],
+  },
 ] as const;
 
 export function runMigrations(db: Database.Database): void {
@@ -117,7 +165,13 @@ export function runMigrations(db: Database.Database): void {
   const applyMigration = db.transaction(
     (version: number, name: string, statements: readonly string[]) => {
       for (const statement of statements) {
-        db.exec(statement);
+        try {
+          db.exec(statement);
+        } catch (error) {
+          if (!isDuplicateColumnError(error)) {
+            throw error;
+          }
+        }
       }
 
       insertMigration.run(version, name, nowIso());
@@ -136,4 +190,11 @@ export function runMigrations(db: Database.Database): void {
   }
 
   repairFtsIndexes(db);
+}
+
+function isDuplicateColumnError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.toLowerCase().includes("duplicate column name")
+  );
 }

@@ -44,8 +44,9 @@ export class ProjectService {
     this.db
       .prepare(
         `INSERT INTO projects (
-          id, name, genre, platform, target_words, current_words, style, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, 0, ?, 'planning', ?, ?)`,
+          id, name, genre, platform, target_words, chapter_word_target, min_chapter_words,
+          max_chapter_words, current_words, style, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'planning', ?, ?)`,
       )
       .run(
         id,
@@ -53,6 +54,9 @@ export class ProjectService {
         input.genre ?? null,
         input.platform ?? null,
         input.targetWords ?? null,
+        input.chapterWordTarget ?? null,
+        input.minChapterWords ?? null,
+        input.maxChapterWords ?? null,
         input.style ?? null,
         now,
         now,
@@ -120,7 +124,9 @@ export class ProjectService {
     this.db
       .prepare(
         `UPDATE projects
-        SET name = ?, genre = ?, platform = ?, target_words = ?, current_words = ?, style = ?, status = ?, updated_at = ?
+        SET name = ?, genre = ?, platform = ?, target_words = ?, chapter_word_target = ?,
+            min_chapter_words = ?, max_chapter_words = ?, current_words = ?, style = ?,
+            status = ?, updated_at = ?
         WHERE id = ?`,
       )
       .run(
@@ -128,6 +134,9 @@ export class ProjectService {
         patchValue(patch.genre, current.genre),
         patchValue(patch.platform, current.platform),
         patchValue(patch.targetWords, current.targetWords),
+        patchValue(patch.chapterWordTarget, current.chapterWordTarget),
+        patchValue(patch.minChapterWords, current.minChapterWords),
+        patchValue(patch.maxChapterWords, current.maxChapterWords),
         patchValue(patch.currentWords, current.currentWords),
         patchValue(patch.style, current.style),
         patchValue(patch.status, current.status),

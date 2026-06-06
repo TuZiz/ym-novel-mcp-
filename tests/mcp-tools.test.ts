@@ -46,6 +46,15 @@ describe("MCP tools", () => {
         "build_next_chapter_context",
         "check_continuity",
         "search_chapters",
+        "review_chapter_quality",
+        "expand_chapter_prompt",
+        "apply_project_bible",
+        "export_workspace_files",
+        "generate_character_bibles_prompt",
+        "apply_character_bibles",
+        "generate_character_name",
+        "review_character_name",
+        "replace_character_name",
       ]),
     );
 

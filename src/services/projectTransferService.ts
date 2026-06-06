@@ -15,6 +15,8 @@ import {
   mapCharacterRelationshipRow,
   mapCharacterRow,
   mapForeshadowingRow,
+  mapNameBankRow,
+  mapProjectBibleRow,
   mapTimelineEventRow,
   mapVolumeRow,
   mapWorldItemRow,
@@ -43,6 +45,9 @@ const projectSchema = baseRecordSchema.extend({
   genre: z.string().nullable(),
   platform: z.string().nullable(),
   targetWords: z.number().int().nullable(),
+  chapterWordTarget: z.number().int().nullable().optional().default(null),
+  minChapterWords: z.number().int().nullable().optional().default(null),
+  maxChapterWords: z.number().int().nullable().optional().default(null),
   currentWords: z.number().int().nonnegative(),
   style: z.string().nullable(),
   status: z.string()
@@ -70,6 +75,15 @@ const characterSchema = baseRecordSchema.extend({
   currentState: z.string().nullable(),
   powerLevel: z.string().nullable(),
   location: z.string().nullable(),
+  characterArc: z.string().nullable().optional().default(null),
+  weakness: z.string().nullable().optional().default(null),
+  secret: z.string().nullable().optional().default(null),
+  voice: z.string().nullable().optional().default(null),
+  speechHabits: z.string().nullable().optional().default(null),
+  moralCode: z.string().nullable().optional().default(null),
+  relationshipGoal: z.string().nullable().optional().default(null),
+  growthStage: z.string().nullable().optional().default(null),
+  firstScenePlan: z.string().nullable().optional().default(null),
   status: z.string(),
   firstAppearanceChapter: z.number().int().nullable(),
   lastAppearanceChapter: z.number().int().nullable()
@@ -171,8 +185,38 @@ const writingRuleSchema = baseRecordSchema.extend({
   enabled: z.boolean()
 });
 
+const projectBibleSchema = z.object({
+  projectId: z.string().min(1),
+  premise: z.string().nullable(),
+  logline: z.string().nullable(),
+  coreHook: z.string().nullable(),
+  targetReader: z.string().nullable(),
+  genreFormula: z.string().nullable(),
+  pov: z.string().nullable(),
+  tone: z.string().nullable(),
+  taboo: z.string().nullable(),
+  endingDirection: z.string().nullable(),
+  longTermConflict: z.string().nullable(),
+  chapterWordTarget: z.number().int().nullable(),
+  createdAt: timestampSchema,
+  updatedAt: timestampSchema
+});
+
+const nameBankSchema = baseRecordSchema.extend({
+  projectId: z.string().nullable(),
+  era: z.string().nullable(),
+  region: z.string().nullable(),
+  surnamePool: z.array(z.string()),
+  givenNamePool: z.array(z.string()),
+  bannedTokens: z.array(z.string()),
+  bannedFullNames: z.array(z.string()),
+  style: z.string().nullable()
+});
+
 const exportedProjectDataSchema = z.object({
   project: projectSchema,
+  projectBible: projectBibleSchema.nullable().optional().default(null),
+  nameBanks: z.array(nameBankSchema).optional().default([]),
   worldItems: z.array(worldItemSchema).default([]),
   characters: z.array(characterSchema).default([]),
   relationships: z.array(relationshipSchema).default([]),
@@ -199,6 +243,7 @@ type IdMaps = {
   timelineEvents: Map<string, string>;
   canonFacts: Map<string, string>;
   writingRules: Map<string, string>;
+  nameBanks: Map<string, string>;
 };
 
 export class ProjectTransferService {
@@ -209,9 +254,18 @@ export class ProjectTransferService {
 
   exportProject(projectId: string): ExportedProjectData {
     this.projectService.ensureProjectExists(projectId);
+    const projectBibleRow = this.db
+      .prepare("SELECT * FROM project_bibles WHERE project_id = ?")
+      .get(projectId) as Record<string, unknown> | undefined;
 
     return {
       project: this.projectService.getProject(projectId),
+      projectBible: projectBibleRow ? mapProjectBibleRow(projectBibleRow) : null,
+      nameBanks: this.listRows(
+        "SELECT * FROM name_bank WHERE project_id = ? ORDER BY created_at ASC",
+        projectId,
+        mapNameBankRow
+      ),
       worldItems: this.listRows(
         "SELECT * FROM world_items WHERE project_id = ? ORDER BY created_at ASC",
         projectId,
@@ -281,6 +335,8 @@ export class ProjectTransferService {
       }
 
       this.insertProject(data, maps, importedAt);
+      this.insertProjectBible(data, maps, importedAt);
+      this.insertNameBanks(data, maps);
       this.insertWorldItems(data, maps);
       this.insertCharacters(data, maps);
       this.insertRelationships(data, maps);
@@ -310,7 +366,7 @@ export class ProjectTransferService {
         foreshadowings: data.foreshadowings.length,
         timelineEvents: data.timelineEvents.length,
         canonFacts: data.canonFacts.length,
-        writingRules: data.writingRules.length
+        writingRules: data.writingRules.length,
       }
     };
   }
@@ -348,8 +404,9 @@ export class ProjectTransferService {
     this.db
       .prepare(
         `INSERT INTO projects (
-          id, name, genre, platform, target_words, current_words, style, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`
+          id, name, genre, platform, target_words, chapter_word_target, min_chapter_words,
+          max_chapter_words, current_words, style, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`
       )
       .run(
         maps.projectId,
@@ -357,11 +414,76 @@ export class ProjectTransferService {
         data.project.genre,
         data.project.platform,
         data.project.targetWords,
+        data.project.chapterWordTarget,
+        data.project.minChapterWords,
+        data.project.maxChapterWords,
         data.project.style,
         data.project.status,
         timestamp,
         importedAt
       );
+  }
+
+  private insertProjectBible(
+    data: ParsedProjectData,
+    maps: IdMaps,
+    importedAt: string
+  ): void {
+    if (!data.projectBible) {
+      return;
+    }
+
+    this.db
+      .prepare(
+        `INSERT INTO project_bibles (
+          project_id, premise, logline, core_hook, target_reader, genre_formula, pov,
+          tone, taboo, ending_direction, long_term_conflict, chapter_word_target,
+          created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        maps.projectId,
+        data.projectBible.premise,
+        data.projectBible.logline,
+        data.projectBible.coreHook,
+        data.projectBible.targetReader,
+        data.projectBible.genreFormula,
+        data.projectBible.pov,
+        data.projectBible.tone,
+        data.projectBible.taboo,
+        data.projectBible.endingDirection,
+        data.projectBible.longTermConflict,
+        data.projectBible.chapterWordTarget,
+        maps.projectId === data.projectBible.projectId
+          ? data.projectBible.createdAt
+          : importedAt,
+        importedAt
+      );
+  }
+
+  private insertNameBanks(data: ParsedProjectData, maps: IdMaps): void {
+    const insert = this.db.prepare(
+      `INSERT INTO name_bank (
+        id, project_id, era, region, surname_pool, given_name_pool, banned_tokens,
+        banned_full_names, style, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+
+    for (const bank of data.nameBanks) {
+      insert.run(
+        requiredMappedId(maps.nameBanks, bank.id, "name bank"),
+        maps.projectId,
+        bank.era,
+        bank.region,
+        serializeStringArray(uniqueStrings(bank.surnamePool)),
+        serializeStringArray(uniqueStrings(bank.givenNamePool)),
+        serializeStringArray(uniqueStrings(bank.bannedTokens)),
+        serializeStringArray(uniqueStrings(bank.bannedFullNames)),
+        bank.style,
+        bank.createdAt,
+        bank.updatedAt
+      );
+    }
   }
 
   private insertWorldItems(data: ParsedProjectData, maps: IdMaps): void {
@@ -390,9 +512,11 @@ export class ProjectTransferService {
     const insert = this.db.prepare(
       `INSERT INTO characters (
         id, project_id, name, aliases, role, personality, motivation, ability, appearance,
-        relationship_summary, current_state, power_level, location, status,
+        relationship_summary, current_state, power_level, location, character_arc, weakness,
+        secret, voice, speech_habits, moral_code, relationship_goal, growth_stage,
+        first_scene_plan, status,
         first_appearance_chapter, last_appearance_chapter, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
 
     for (const character of data.characters) {
@@ -410,6 +534,15 @@ export class ProjectTransferService {
         character.currentState,
         character.powerLevel,
         character.location,
+        character.characterArc,
+        character.weakness,
+        character.secret,
+        character.voice,
+        character.speechHabits,
+        character.moralCode,
+        character.relationshipGoal,
+        character.growthStage,
+        character.firstScenePlan,
         character.status,
         character.firstAppearanceChapter,
         character.lastAppearanceChapter,
@@ -647,7 +780,8 @@ function buildIdMaps(
     foreshadowings: buildIdMap(data.foreshadowings, "foreshadowing", keepOriginalIds),
     timelineEvents: buildIdMap(data.timelineEvents, "timeline", keepOriginalIds),
     canonFacts: buildIdMap(data.canonFacts, "canon", keepOriginalIds),
-    writingRules: buildIdMap(data.writingRules, "rule", keepOriginalIds)
+    writingRules: buildIdMap(data.writingRules, "rule", keepOriginalIds),
+    nameBanks: buildIdMap(data.nameBanks, "namebank", keepOriginalIds)
   };
 }
 

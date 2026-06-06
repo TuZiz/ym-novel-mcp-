@@ -1,11 +1,15 @@
 import type Database from "better-sqlite3";
 import type {
   Chapter,
+  ChapterQualityIssue,
+  ChapterQualityReview,
+  ExpandChapterPromptInput,
   GetRecentChaptersInput,
+  ReviewChapterQualityInput,
   SaveChapterInput,
   UpdateChapterSummaryInput,
 } from "../types/novel.js";
-import { assertFound } from "../utils/errors.js";
+import { AppError, assertFound } from "../utils/errors.js";
 import { createId } from "../utils/ids.js";
 import { mapChapterRow } from "../utils/rows.js";
 import {
@@ -31,6 +35,20 @@ export class ChapterService {
     this.projectService.ensureProjectExists(input.projectId);
     if (input.volumeId) {
       this.outlineService.getVolume(input.projectId, input.volumeId);
+    }
+
+    const review = this.reviewChapterQuality({
+      projectId: input.projectId,
+      chapterIndex: input.chapterIndex,
+      title: input.title,
+      content: input.content,
+      hook: input.hook,
+    });
+    if (review.allowShortReasonRequired && !input.allowShortReason?.trim()) {
+      throw new AppError(
+        `Chapter has ${review.wordCount} words, below minChapterWords ${review.minChapterWords}. Provide allowShortReason to save intentionally short chapters.`,
+        "QUALITY_GATE_FAILED",
+      );
     }
 
     const existing = this.db
@@ -306,4 +324,181 @@ export class ChapterService {
 
     return this.getChapter(input.projectId, input.chapterId);
   }
+
+  reviewChapterQuality(input: ReviewChapterQualityInput): ChapterQualityReview {
+    const project = this.projectService.getProject(input.projectId);
+    const wordCount = countWords(input.content);
+    const sceneCount = countScenes(input.content);
+    const conflictProgressionScore = scoreConflictProgression(input.content);
+    const endingHookScore = scoreEndingHook(input.content, input.hook);
+    const aiExpressionScore = scoreAiExpression(input.content);
+    const summaryRatio = calculateSummaryRatio(input.content);
+    const issues: ChapterQualityIssue[] = [];
+
+    if (project.minChapterWords && wordCount < project.minChapterWords) {
+      issues.push({
+        type: "too_short",
+        severity: "high",
+        message: `章节字数 ${wordCount} 低于最低门槛 ${project.minChapterWords}。`,
+      });
+    }
+    if (project.maxChapterWords && wordCount > project.maxChapterWords) {
+      issues.push({
+        type: "too_long",
+        severity: "medium",
+        message: `章节字数 ${wordCount} 高于建议上限 ${project.maxChapterWords}。`,
+      });
+    }
+    if (sceneCount < 4) {
+      issues.push({
+        type: "too_few_scenes",
+        severity: "medium",
+        message: `识别到 ${sceneCount} 个场景，建议至少 4-6 个完整场景。`,
+      });
+    }
+    if (conflictProgressionScore < 50) {
+      issues.push({
+        type: "weak_conflict",
+        severity: "medium",
+        message: "冲突推进偏弱，缺少行动、阻力升级或明确代价。",
+      });
+    }
+    if (endingHookScore < 50) {
+      issues.push({
+        type: "weak_hook",
+        severity: "medium",
+        message: "结尾钩子偏弱，建议留下新信息、新危险或明确悬念。",
+      });
+    }
+    if (aiExpressionScore >= 60) {
+      issues.push({
+        type: "ai_like_expression",
+        severity: "medium",
+        message: "检测到较多模板化或总结式 AI 腔表达。",
+      });
+    }
+    if (summaryRatio >= 0.35) {
+      issues.push({
+        type: "summary_over_plot",
+        severity: "high",
+        message: "总结化比例过高，可能用概述代替了具体剧情。",
+      });
+    }
+
+    const allowShortReasonRequired = issues.some(
+      (issue) => issue.type === "too_short",
+    );
+
+    return {
+      ok: !issues.some((issue) => issue.severity === "high"),
+      wordCount,
+      chapterWordTarget: project.chapterWordTarget,
+      minChapterWords: project.minChapterWords,
+      maxChapterWords: project.maxChapterWords,
+      sceneCount,
+      conflictProgressionScore,
+      endingHookScore,
+      aiExpressionScore,
+      summaryRatio,
+      issues,
+      allowShortReasonRequired,
+    };
+  }
+
+  expandChapterPrompt(input: ExpandChapterPromptInput): string {
+    const project = this.projectService.getProject(input.projectId);
+    const review = this.reviewChapterQuality({
+      projectId: input.projectId,
+      chapterIndex: input.chapterIndex,
+      title: input.title,
+      content: input.content,
+    });
+    const target =
+      project.chapterWordTarget ??
+      project.minChapterWords ??
+      Math.max(review.wordCount + 1200, 3500);
+    const minWords = project.minChapterWords ?? Math.max(1200, target - 500);
+
+    return [
+      "请扩写下面这一章，必须直接输出小说正文，不要输出大纲、分析、解释或提示词。",
+      `目标：扩写到约 ${target} 中文字，最低不得低于 ${minWords} 中文字。`,
+      "硬性要求：保留原剧情走向和关键事实；增加完整场景、对白、动作、心理、环境细节和冲突升级；不得水字数，不得用总结代替剧情。",
+      "结构要求：至少 4-6 个完整场景，包含承接上一章、主角行动、阻力升级、人物变化、结尾钩子。",
+      "风格要求：减少模板化表达，人物说话要有差异，冲突必须落到具体行动和选择。",
+      input.currentIssues?.length
+        ? `当前问题：${input.currentIssues.join("；")}`
+        : `当前审核：${JSON.stringify(review, null, 2)}`,
+      `章节标题：${input.title ?? `第 ${input.chapterIndex ?? "?"} 章`}`,
+      "原章节正文：",
+      input.content,
+    ].join("\n\n");
+  }
+}
+
+function countScenes(content: string): number {
+  const explicitScenes = content
+    .split(/\n\s*(?:-{3,}|\*{3,}|#{2,}|第[一二三四五六七八九十\d]+场|场景[一二三四五六七八九十\d]+)\s*\n/u)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  if (explicitScenes.length > 1) {
+    return explicitScenes.length;
+  }
+
+  const paragraphs = content
+    .split(/\n+/u)
+    .map((part) => part.trim())
+    .filter((part) => countWords(part) >= 30);
+  return Math.max(1, Math.ceil(paragraphs.length / 4));
+}
+
+function scoreConflictProgression(content: string): number {
+  const actionHits = countPattern(content, /冲|追|挡|拦|逼|夺|逃|打|问|查|闯|救|杀|争|抢/gu);
+  const resistanceHits = countPattern(
+    content,
+    /但是|然而|偏偏|阻止|代价|威胁|危险|失败|暴露|陷阱|反击|拒绝|怀疑/gu,
+  );
+  const changeHits = countPattern(
+    content,
+    /终于|意识到|决定|改变|失去|得到|发现|揭开|承认|背叛|选择/gu,
+  );
+  return Math.min(100, actionHits * 4 + resistanceHits * 8 + changeHits * 8);
+}
+
+function scoreEndingHook(content: string, hook?: string): number {
+  const ending = excerptEnd(content, 180) ?? "";
+  const text = `${ending}\n${hook ?? ""}`;
+  const hookHits = countPattern(
+    text,
+    /？|吗|谁|为何|突然|只见|门外|身后|下一刻|真相|秘密|血|响|裂|来了|名字/gu,
+  );
+  return Math.min(100, hookHits * 20 + (hook?.trim() ? 30 : 0));
+}
+
+function scoreAiExpression(content: string): number {
+  const hits = countPattern(
+    content,
+    /总而言之|与此同时|不可否认|值得一提的是|他知道.*必须|一种.*感觉|复杂的情绪|内心深处|命运的齿轮|空气仿佛凝固/gu,
+  );
+  return Math.min(100, hits * 18);
+}
+
+function calculateSummaryRatio(content: string): number {
+  const sentences = content
+    .split(/[。！？!?]/u)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (sentences.length === 0) {
+    return 0;
+  }
+
+  const summaryCount = sentences.filter((sentence) =>
+    /经过|随后|于是|最终|很快|一番|开始|继续|决定|意识到|明白了|想起了/u.test(
+      sentence,
+    ),
+  ).length;
+  return Number((summaryCount / sentences.length).toFixed(2));
+}
+
+function countPattern(content: string, pattern: RegExp): number {
+  return [...content.matchAll(pattern)].length;
 }

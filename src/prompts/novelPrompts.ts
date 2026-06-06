@@ -12,7 +12,7 @@ export function registerNovelPrompts(
   server.registerPrompt(
     "write-next-chapter",
     {
-      description: "生成下一章写作提示词。",
+      description: "生成下一章正文写作提示词。",
       argsSchema: {
         projectId: z.string().min(1),
         chapterIndex: promptChapterIndexSchema,
@@ -23,6 +23,10 @@ export function registerNovelPrompts(
         projectId,
         chapterIndex,
       });
+      const target = context.project.chapterWordTarget ?? 4000;
+      const minWords =
+        context.project.minChapterWords ?? Math.max(1, target - 500);
+      const maxWords = context.project.maxChapterWords ?? target + 500;
 
       return {
         messages: [
@@ -30,9 +34,16 @@ export function registerNovelPrompts(
             role: "user",
             content: {
               type: "text",
-              text:
-                `${context.instruction}\n\n` +
-                `请结合以下结构化上下文创作本章：\n${JSON.stringify(context, null, 2)}`,
+              text: [
+                "你必须直接输出小说正文，不要输出大纲、分析、解释、提示词、创作说明或 JSON。",
+                `本章目标字数：${minWords}-${maxWords} 中文字，目标约 ${target} 中文字；低于 ${minWords} 中文字视为失败。`,
+                "本章至少包含 4-6 个完整场景：承接上一章、主角行动、阻力升级、人物变化、结尾钩子。",
+                "禁止用总结代替剧情。必须用具体场景、对白、动作、心理和冲突推进来完成章节。",
+                "结尾必须留下能推动下一章阅读的钩子，但不能突兀篡改既有设定。",
+                context.instruction,
+                `请结合以下结构化上下文创作第 ${chapterIndex} 章正文：`,
+                JSON.stringify(context, null, 2),
+              ].join("\n\n"),
             },
           },
         ],

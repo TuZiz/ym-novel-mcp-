@@ -10,13 +10,16 @@ import { ContinuityService } from "./services/continuityService.js";
 import { ForeshadowingService } from "./services/foreshadowingService.js";
 import { LearningMemoryService } from "./services/learningMemoryService.js";
 import { McpCallLogService } from "./services/mcpCallLogService.js";
+import { NameService } from "./services/nameService.js";
 import { OutlineService } from "./services/outlineService.js";
+import { ProjectBibleService } from "./services/projectBibleService.js";
 import { ProjectService } from "./services/projectService.js";
 import { ProjectSnapshotService } from "./services/projectSnapshotService.js";
 import { ProjectTransferService } from "./services/projectTransferService.js";
 import { SearchService } from "./services/searchService.js";
 import { TimelineService } from "./services/timelineService.js";
 import { WorldService } from "./services/worldService.js";
+import { WorkspaceExportService } from "./services/workspaceExportService.js";
 import { WritingContextService } from "./services/writingContextService.js";
 import type { AppServices } from "./types/app.js";
 import { registerChapterTools } from "./tools/chapterTools.js";
@@ -85,6 +88,14 @@ function createServices(database: NovelDatabase): AppServices {
     projectService,
     projectTransferService,
   );
+  const projectBibleService = new ProjectBibleService(
+    database.db,
+    projectService,
+  );
+  const workspaceExportService = new WorkspaceExportService(
+    projectTransferService,
+    projectBibleService,
+  );
   const outlineService = new OutlineService(database.db, projectService);
   const chapterService = new ChapterService(
     database.db,
@@ -93,6 +104,11 @@ function createServices(database: NovelDatabase): AppServices {
   );
   const worldService = new WorldService(database.db, projectService);
   const characterService = new CharacterService(database.db, projectService);
+  const nameService = new NameService(
+    database.db,
+    projectService,
+    characterService,
+  );
   const foreshadowingService = new ForeshadowingService(
     database.db,
     projectService,
@@ -155,8 +171,11 @@ function createServices(database: NovelDatabase): AppServices {
     projectService,
     projectTransferService,
     projectSnapshotService,
+    projectBibleService,
+    workspaceExportService,
     worldService,
     characterService,
+    nameService,
     outlineService,
     chapterService,
     foreshadowingService,

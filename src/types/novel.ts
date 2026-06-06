@@ -11,6 +11,9 @@ export interface Project extends BaseRecord {
   genre: string | null;
   platform: string | null;
   targetWords: number | null;
+  chapterWordTarget: number | null;
+  minChapterWords: number | null;
+  maxChapterWords: number | null;
   currentWords: number;
   style: string | null;
   status: string;
@@ -38,9 +41,46 @@ export interface Character extends BaseRecord {
   currentState: string | null;
   powerLevel: string | null;
   location: string | null;
+  characterArc: string | null;
+  weakness: string | null;
+  secret: string | null;
+  voice: string | null;
+  speechHabits: string | null;
+  moralCode: string | null;
+  relationshipGoal: string | null;
+  growthStage: string | null;
+  firstScenePlan: string | null;
   status: string;
   firstAppearanceChapter: number | null;
   lastAppearanceChapter: number | null;
+}
+
+export interface ProjectBible {
+  projectId: string;
+  premise: string | null;
+  logline: string | null;
+  coreHook: string | null;
+  targetReader: string | null;
+  genreFormula: string | null;
+  pov: string | null;
+  tone: string | null;
+  taboo: string | null;
+  endingDirection: string | null;
+  longTermConflict: string | null;
+  chapterWordTarget: number | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface NameBank extends BaseRecord {
+  projectId: string | null;
+  era: string | null;
+  region: string | null;
+  surnamePool: string[];
+  givenNamePool: string[];
+  bannedTokens: string[];
+  bannedFullNames: string[];
+  style: string | null;
 }
 
 export interface CharacterRelationship extends BaseRecord {
@@ -270,6 +310,42 @@ export interface ContinuityCheckResult {
   warnings: ContinuityWarning[];
 }
 
+export interface ChapterQualityIssue {
+  type:
+    | "too_short"
+    | "too_long"
+    | "too_few_scenes"
+    | "weak_conflict"
+    | "weak_hook"
+    | "ai_like_expression"
+    | "summary_over_plot";
+  severity: "low" | "medium" | "high";
+  message: string;
+}
+
+export interface ChapterQualityReview {
+  ok: boolean;
+  wordCount: number;
+  chapterWordTarget: number | null;
+  minChapterWords: number | null;
+  maxChapterWords: number | null;
+  sceneCount: number;
+  conflictProgressionScore: number;
+  endingHookScore: number;
+  aiExpressionScore: number;
+  summaryRatio: number;
+  issues: ChapterQualityIssue[];
+  allowShortReasonRequired: boolean;
+}
+
+export interface CharacterNameReview {
+  ok: boolean;
+  aiScore: number;
+  reason: string;
+  suggestions: string[];
+  bannedHits: string[];
+}
+
 export interface NextChapterContext {
   project: Project;
   currentVolume: Volume | null;
@@ -290,6 +366,8 @@ export interface NextChapterContext {
 
 export interface ExportedProjectData {
   project: Project;
+  projectBible?: ProjectBible | null;
+  nameBanks?: NameBank[];
   worldItems: WorldItem[];
   characters: Character[];
   relationships: CharacterRelationship[];
@@ -530,6 +608,9 @@ export interface CreateProjectInput {
   genre?: string;
   platform?: string;
   targetWords?: number;
+  chapterWordTarget?: number;
+  minChapterWords?: number;
+  maxChapterWords?: number;
   style?: string;
 }
 
@@ -538,6 +619,9 @@ export interface UpdateProjectInput {
   genre?: string | null;
   platform?: string | null;
   targetWords?: number | null;
+  chapterWordTarget?: number | null;
+  minChapterWords?: number | null;
+  maxChapterWords?: number | null;
   currentWords?: number;
   style?: string | null;
   status?: string;
@@ -572,6 +656,15 @@ export interface AddCharacterInput {
   currentState?: string;
   powerLevel?: string;
   location?: string;
+  characterArc?: string;
+  weakness?: string;
+  secret?: string;
+  voice?: string;
+  speechHabits?: string;
+  moralCode?: string;
+  relationshipGoal?: string;
+  growthStage?: string;
+  firstScenePlan?: string;
 }
 
 export interface UpdateCharacterStateInput {
@@ -668,6 +761,7 @@ export interface SaveChapterInput {
   involvedCharacters?: string[];
   involvedWorldItems?: string[];
   status?: string;
+  allowShortReason?: string;
 }
 
 export interface GetRecentChaptersInput {
@@ -728,4 +822,131 @@ export interface BuildNextChapterContextInput {
   volumeId?: string;
   focus?: string;
   recentChapterLimit?: number;
+}
+
+export interface ReviewChapterQualityInput {
+  projectId: string;
+  chapterIndex?: number;
+  title?: string;
+  content: string;
+  hook?: string;
+}
+
+export interface ExpandChapterPromptInput {
+  projectId: string;
+  chapterIndex?: number;
+  title?: string;
+  content: string;
+  currentIssues?: string[];
+}
+
+export type ProjectBibleInput = Partial<
+  Pick<
+    ProjectBible,
+    | "premise"
+    | "logline"
+    | "coreHook"
+    | "targetReader"
+    | "genreFormula"
+    | "pov"
+    | "tone"
+    | "taboo"
+    | "endingDirection"
+    | "longTermConflict"
+    | "chapterWordTarget"
+  >
+>;
+
+export interface ApplyProjectBibleInput extends ProjectBibleInput {
+  projectId: string;
+}
+
+export interface UpdateProjectBibleInput extends ApplyProjectBibleInput {}
+
+export interface GenerateProjectBiblePromptInput {
+  projectId: string;
+  focus?: string;
+}
+
+export interface ExportWorkspaceFilesInput {
+  projectId: string;
+  outputDir?: string;
+}
+
+export interface ExportWorkspaceFilesResult {
+  rootDir: string;
+  files: string[];
+}
+
+export interface GenerateCharacterBiblesPromptInput {
+  projectId: string;
+  characterIds?: string[];
+}
+
+export interface ApplyCharacterBiblePatch {
+  characterId?: string;
+  name?: string;
+  aliases?: string[];
+  role?: string;
+  personality?: string;
+  motivation?: string;
+  ability?: string;
+  appearance?: string;
+  relationshipSummary?: string;
+  currentState?: string;
+  powerLevel?: string;
+  location?: string;
+  characterArc?: string;
+  weakness?: string;
+  secret?: string;
+  voice?: string;
+  speechHabits?: string;
+  moralCode?: string;
+  relationshipGoal?: string;
+  growthStage?: string;
+  firstScenePlan?: string;
+}
+
+export interface ApplyCharacterBiblesInput {
+  projectId: string;
+  characters: ApplyCharacterBiblePatch[];
+}
+
+export interface NameBankInput {
+  projectId?: string;
+  era?: string;
+  region?: string;
+  surnamePool?: string[];
+  givenNamePool?: string[];
+  bannedTokens?: string[];
+  bannedFullNames?: string[];
+  style?: string;
+}
+
+export interface GenerateCharacterNameInput {
+  projectId?: string;
+  genre?: string;
+  era?: string;
+  region?: string;
+  style?: string;
+  gender?: string;
+  count?: number;
+}
+
+export interface GenerateCharacterNameResult {
+  names: string[];
+  rejected: Array<{ name: string; reason: string }>;
+}
+
+export interface ReviewCharacterNameInput {
+  projectId?: string;
+  name: string;
+  genre?: string;
+  style?: string;
+}
+
+export interface ReplaceCharacterNameInput extends ReviewCharacterNameInput {
+  projectId: string;
+  characterId: string;
+  newName?: string;
 }

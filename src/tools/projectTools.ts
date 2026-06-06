@@ -18,6 +18,9 @@ export function registerProjectTools(
         genre: z.string().optional(),
         platform: z.string().optional(),
         targetWords: z.number().int().positive().optional(),
+        chapterWordTarget: z.number().int().positive().optional(),
+        minChapterWords: z.number().int().positive().optional(),
+        maxChapterWords: z.number().int().positive().optional(),
         style: z.string().optional(),
       },
     },
@@ -58,6 +61,9 @@ export function registerProjectTools(
         genre: z.string().nullable().optional(),
         platform: z.string().nullable().optional(),
         targetWords: z.number().int().positive().nullable().optional(),
+        chapterWordTarget: z.number().int().positive().nullable().optional(),
+        minChapterWords: z.number().int().positive().nullable().optional(),
+        maxChapterWords: z.number().int().positive().nullable().optional(),
         currentWords: z.number().int().nonnegative().optional(),
         style: z.string().nullable().optional(),
         status: z.string().optional(),
@@ -78,6 +84,88 @@ export function registerProjectTools(
     },
     wrapToolHandler(({ projectId }) =>
       services.projectTransferService.exportProject(projectId),
+    ),
+  );
+
+  const projectBibleInputSchema = {
+    projectId: z.string().min(1),
+    premise: z.string().optional(),
+    logline: z.string().optional(),
+    coreHook: z.string().optional(),
+    targetReader: z.string().optional(),
+    genreFormula: z.string().optional(),
+    pov: z.string().optional(),
+    tone: z.string().optional(),
+    taboo: z.string().optional(),
+    endingDirection: z.string().optional(),
+    longTermConflict: z.string().optional(),
+    chapterWordTarget: z.number().int().positive().optional(),
+  };
+
+  server.registerTool(
+    "generate_project_bible_prompt",
+    {
+      description: "生成项目圣经写作提示词。",
+      inputSchema: {
+        projectId: z.string().min(1),
+        focus: z.string().optional(),
+      },
+    },
+    wrapToolHandler(
+      (args) => services.projectBibleService.generateProjectBiblePrompt(args),
+      log("generate_project_bible_prompt"),
+    ),
+  );
+
+  server.registerTool(
+    "apply_project_bible",
+    {
+      description: "写入项目圣经。",
+      inputSchema: projectBibleInputSchema,
+    },
+    wrapToolHandler(
+      (args) => services.projectBibleService.applyProjectBible(args),
+      log("apply_project_bible"),
+    ),
+  );
+
+  server.registerTool(
+    "get_project_bible",
+    {
+      description: "读取项目圣经。",
+      inputSchema: {
+        projectId: z.string().min(1),
+      },
+    },
+    wrapToolHandler(({ projectId }) =>
+      services.projectBibleService.getProjectBible(projectId),
+    ),
+  );
+
+  server.registerTool(
+    "update_project_bible",
+    {
+      description: "更新项目圣经。",
+      inputSchema: projectBibleInputSchema,
+    },
+    wrapToolHandler(
+      (args) => services.projectBibleService.updateProjectBible(args),
+      log("update_project_bible"),
+    ),
+  );
+
+  server.registerTool(
+    "export_workspace_files",
+    {
+      description: "导出 Markdown/JSON 工程目录。",
+      inputSchema: {
+        projectId: z.string().min(1),
+        outputDir: z.string().optional(),
+      },
+    },
+    wrapToolHandler(
+      (args) => services.workspaceExportService.exportWorkspaceFiles(args),
+      log("export_workspace_files"),
     ),
   );
 
