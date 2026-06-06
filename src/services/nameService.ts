@@ -337,7 +337,7 @@ export class NameService {
   }
 
   private findNameBank(input: NameBankInput): NameBank | null {
-    const row = this.db
+    const exactRow = this.db
       .prepare(
         `SELECT * FROM name_bank
         WHERE COALESCE(project_id, '') = COALESCE(?, '')
@@ -353,7 +353,36 @@ export class NameService {
         input.style ?? null,
       ) as Record<string, unknown> | undefined;
 
-    return row ? mapNameBankRow(row) : null;
+    if (exactRow) {
+      return mapNameBankRow(exactRow);
+    }
+
+    const isStyleOnlyUpdate =
+      input.style !== undefined &&
+      input.surnamePool === undefined &&
+      input.givenNamePool === undefined &&
+      input.bannedTokens === undefined &&
+      input.bannedFullNames === undefined;
+    if (!isStyleOnlyUpdate) {
+      return null;
+    }
+
+    const styleUpdateRow = this.db
+      .prepare(
+        `SELECT * FROM name_bank
+        WHERE COALESCE(project_id, '') = COALESCE(?, '')
+          AND COALESCE(era, '') = COALESCE(?, '')
+          AND COALESCE(region, '') = COALESCE(?, '')
+        ORDER BY updated_at DESC
+        LIMIT 1`,
+      )
+      .get(
+        input.projectId ?? null,
+        input.era ?? null,
+        input.region ?? null,
+      ) as Record<string, unknown> | undefined;
+
+    return styleUpdateRow ? mapNameBankRow(styleUpdateRow) : null;
   }
 
   private pickNameBank(input: {

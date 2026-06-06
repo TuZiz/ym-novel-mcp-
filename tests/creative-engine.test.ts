@@ -60,6 +60,16 @@ describe("creative engine features", () => {
       }),
     ).toThrow(/too_short/);
 
+    expect(() =>
+      app.services.chapterService.saveChapterWithQualityGate({
+        projectId: project.id,
+        chapterIndex: 3,
+        title: "短章",
+        content,
+        allowQualityOverrideReason: "质量覆盖理由不能绕过短章。",
+      }),
+    ).toThrow(/too_short/);
+
     const gated = app.services.chapterService.saveChapterWithQualityGate({
       projectId: project.id,
       chapterIndex: 2,
@@ -119,6 +129,7 @@ describe("creative engine features", () => {
       projectId: project.id,
       era: "现代",
       region: "华东",
+      style: "plain",
       surnamePool: ["陈", "李"],
       givenNamePool: ["明", "安"],
       bannedTokens: ["俗"],
@@ -129,6 +140,7 @@ describe("creative engine features", () => {
       projectId: project.id,
       era: "现代",
       region: "华东",
+      style: "plain",
     });
 
     expect(updated.surnamePool).toEqual(initial.surnamePool);
@@ -136,10 +148,21 @@ describe("creative engine features", () => {
     expect(updated.bannedTokens).toEqual(initial.bannedTokens);
     expect(updated.bannedFullNames).toEqual(initial.bannedFullNames);
 
+    const restyled = app.services.nameService.upsertNameBank({
+      projectId: project.id,
+      era: "现代",
+      region: "华东",
+      style: "polished",
+    });
+    expect(restyled.style).toBe("polished");
+    expect(restyled.surnamePool).toEqual(initial.surnamePool);
+    expect(restyled.givenNamePool).toEqual(initial.givenNamePool);
+
     const cleared = app.services.nameService.upsertNameBank({
       projectId: project.id,
       era: "现代",
       region: "华东",
+      style: "polished",
       surnamePool: [],
     });
     expect(cleared.surnamePool).toEqual([]);

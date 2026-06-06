@@ -190,10 +190,10 @@ export class ChapterService {
       if (issue.severity !== "high") {
         return false;
       }
-      if (allowQualityOverride) {
-        return false;
+      if (issue.type === "too_short") {
+        return !allowShort;
       }
-      return !(issue.type === "too_short" && allowShort);
+      return !allowQualityOverride;
     });
 
     if (blockingIssues.length > 0) {

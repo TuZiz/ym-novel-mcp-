@@ -265,7 +265,7 @@ pnpm start
 
 ## 长篇创作工程系统
 
-项目现在支持单章字数门禁配置：`chapterWordTarget`、`minChapterWords`、`maxChapterWords`，创建或更新项目时会校验 `minChapterWords <= chapterWordTarget <= maxChapterWords`。`save_chapter` 保持兼容，只做基础保存；`save_chapter_with_quality_gate` 会拦截 `review_chapter_quality` 中 `severity=high` 的问题。短章只可用 `allowShortReason` 绕过 `too_short`，总结化替代剧情等严重质量问题需要 `allowQualityOverrideReason` 才能覆盖。`review_chapter_quality` 会返回稳定 JSON，检查字数、场景数、冲突推进、结尾钩子、AI 味表达和总结化比例；`expand_chapter_prompt` 会为过短章节生成扩写提示词，要求保留原剧情并增加场景、对白、动作、心理和冲突。
+项目现在支持单章字数门禁配置：`chapterWordTarget`、`minChapterWords`、`maxChapterWords`，创建或更新项目时会校验 `minChapterWords <= chapterWordTarget <= maxChapterWords`。`save_chapter` 保持兼容，只做基础保存；`save_chapter_with_quality_gate` 会拦截 `review_chapter_quality` 中 `severity=high` 的问题。短章只可用 `allowShortReason` 绕过 `too_short`，`allowQualityOverrideReason` 不会覆盖短章；总结化替代剧情等严重质量问题需要 `allowQualityOverrideReason` 才能覆盖。`review_chapter_quality` 会返回稳定 JSON，检查字数、场景数、冲突推进、结尾钩子、AI 味表达和总结化比例；`expand_chapter_prompt` 会为过短章节生成扩写提示词，要求保留原剧情并增加场景、对白、动作、心理和冲突。
 
 项目圣经通过 `project_bibles` 保存，字段包括 `premise`、`logline`、`coreHook`、`targetReader`、`genreFormula`、`pov`、`tone`、`taboo`、`endingDirection`、`longTermConflict`、`chapterWordTarget`。使用 `generate_project_bible_prompt` 生成外部模型提示词，再用 `apply_project_bible`、`get_project_bible`、`update_project_bible` 写入和维护。
 
